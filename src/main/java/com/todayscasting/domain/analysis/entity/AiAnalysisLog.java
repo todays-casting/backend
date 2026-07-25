@@ -64,4 +64,11 @@ public class AiAnalysisLog extends BaseEntity {
         this.rawResponse = null;
         this.errorMessage = errorMessage;
     }
+
+    public void retry(String newPrompt) {
+        this.status = AnalysisStatus.PENDING;
+        this.prompt = newPrompt;
+        this.rawResponse = null;
+        this.errorMessage = null;
+    }
 }

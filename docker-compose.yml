@@ -16,6 +16,11 @@ services:
       # S3 파일 저장소 접속 설정입니다. 실제 권한은 EC2 IAM Role 또는 로컬 AWS credential을 사용합니다.
       AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
       AWS_S3_REGION: ${AWS_S3_REGION}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TOKEN_VALIDITY: ${JWT_ACCESS_TOKEN_VALIDITY:-3600000}
+
+      # Gemini API 접속 설정입니다.
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
 
       # 애플리케이션 실행 환경 설정입니다.
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
