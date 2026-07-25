@@ -36,19 +36,29 @@ public class KakaoClient {
         params.add("redirect_uri", redirectUri);
         params.add("code", code);
 
-        return restClient.post()
+        KakaoTokenResponse response = restClient.post()
                 .uri("https://kauth.kakao.com/oauth/token")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(params)
                 .retrieve()
                 .body(KakaoTokenResponse.class);
+
+        if (response == null || response.accessToken() == null || response.accessToken().isBlank()) {
+            throw new RuntimeException("카카오 액세스 토큰을 가져올 수 없습니다.");
+        }
+        return response;
     }
 
     public KakaoUserResponse getUserInfo(String accessToken) {
-        return restClient.get()
+        KakaoUserResponse response = restClient.get()
                 .uri("https://kapi.kakao.com/v2/user/me")
                 .header("Authorization", "Bearer " + accessToken)
                 .retrieve()
                 .body(KakaoUserResponse.class);
+
+        if (response == null) {
+            throw new RuntimeException("카카오 사용자 정보를 가져올 수 없습니다.");
+        }
+        return response;
     }
 }
