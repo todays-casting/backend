@@ -53,6 +53,7 @@ jobs:
       LOCAL_DB_PASSWORD: todays1234
       AWS_S3_BUCKET_NAME: ci-test-bucket
       AWS_S3_REGION: ap-northeast-2
+      GEMINI_API_KEY: ci-test-dummy-key
       TZ: Asia/Seoul
       JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
       JWT_SECRET: ci-test-secret-key-must-be-at-least-32-characters
