@@ -100,6 +100,7 @@ jobs:
             AWS_S3_REGION=${{ secrets.AWS_S3_REGION }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             JWT_ACCESS_TOKEN_VALIDITY=${{ secrets.JWT_ACCESS_TOKEN_VALIDITY }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
             KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
             KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}
             EOF
