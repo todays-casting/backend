@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -76,5 +77,17 @@ public class DailyRecordServiceImpl implements DailyRecordService {
                 .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
 
         return DailyRecordConverter.toResponse(dailyRecord);
+    }
+
+    @Override
+    public List<DailyRecordResponse> getByTags(Long userId, String mood, String moodTag, String activityTag) {
+        // 만약 아무값도 선택이 안되었다면 400_3오류 발생
+        if (mood == null && moodTag == null && activityTag == null) {
+            throw new GeneralException(ErrorStatus.MISSING_PARAMETER);
+        }
+        List<DailyRecord> records = dailyRecordRepository.findByTags(userId, mood, moodTag, activityTag);
+        return records.stream()
+                .map(DailyRecordConverter::toResponse)
+                .toList();
     }
 }

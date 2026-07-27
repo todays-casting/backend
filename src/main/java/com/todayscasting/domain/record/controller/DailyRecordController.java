@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/records")
@@ -52,6 +53,17 @@ public class DailyRecordController {
     ) {
         Long userId = 1L; // TODO
         DailyRecordResponse response = dailyRecordService.getByDate(userId, date);
+        return ApiResponse.onSuccess(response);
+    }
+
+    @GetMapping("/tags")
+    public ApiResponse<List<DailyRecordResponse>> getByTags(
+            @RequestParam(required = false) String mood,
+            @RequestParam(required = false) String moodTag,
+            @RequestParam(required = false) String activityTag
+    ) {
+        Long userId = 1L; // TODO
+        List<DailyRecordResponse> response = dailyRecordService.getByTags(userId, mood, moodTag, activityTag);
         return ApiResponse.onSuccess(response);
     }
 }

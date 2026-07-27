@@ -5,6 +5,7 @@ import com.todayscasting.domain.record.dto.request.DailyRecordUpdateRequest;
 import com.todayscasting.domain.record.dto.response.DailyRecordResponse;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public interface DailyRecordService {
 
@@ -15,4 +16,6 @@ public interface DailyRecordService {
     void delete(Long userId, Long recordId);
 
     DailyRecordResponse getByDate(Long userId, LocalDate date);
+
+    List<DailyRecordResponse> getByTags(Long userId, String mood, String moodTag, String activityTag);
 }
