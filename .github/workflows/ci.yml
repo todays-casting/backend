@@ -58,6 +58,8 @@ jobs:
       JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
       JWT_SECRET: ci-test-secret-key-must-be-at-least-32-characters
       JWT_ACCESS_TOKEN_VALIDITY: 3600000
+      KAKAO_CLIENT_ID: ci-test-kakao-client-id
+      KAKAO_REDIRECT_URI: http://localhost:8080/auth/kakao
 
     steps:
       - name: Checkout code
