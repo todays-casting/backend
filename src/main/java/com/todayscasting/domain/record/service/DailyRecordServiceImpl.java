@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -81,8 +82,8 @@ public class DailyRecordServiceImpl implements DailyRecordService {
 
     @Override
     public List<DailyRecordResponse> getByTags(Long userId, String mood, String moodTag, String activityTag) {
-        // 만약 아무값도 선택이 안되었다면 400_3오류 발생
-        if (mood == null && moodTag == null && activityTag == null) {
+        // 셋 다 값이 없거나(null) 빈 문자열/공백이면 400_3 오류 발생
+        if (!StringUtils.hasText(mood) && !StringUtils.hasText(moodTag) && !StringUtils.hasText(activityTag)) {
             throw new GeneralException(ErrorStatus.MISSING_PARAMETER);
         }
         List<DailyRecord> records = dailyRecordRepository.findByTags(userId, mood, moodTag, activityTag);
