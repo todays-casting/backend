@@ -2,6 +2,22 @@ spring:
   application:
     name: todays-casting-backend
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
   # MySQL 데이터베이스 설정입니다. 실행 환경에서 LOCAL_DB_* 값을 주입합니다.
   datasource:
     url: ${LOCAL_DB_URL}

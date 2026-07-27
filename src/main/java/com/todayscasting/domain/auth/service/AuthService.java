@@ -23,9 +23,15 @@ public class AuthService {
     private final AuthRepository authRepository;
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
+    private final EmailAuthService emailAuthService;
 
     @Transactional
     public TokenResponse signUp(SignUpRequest request) {
+
+        if (!emailAuthService.isVerified(request.email())) {
+            throw new GeneralException(AuthErrorStatus.EMAIL_NOT_VERIFIED);
+        }
+
         if (userRepository.existsByEmail(request.email())) {
             throw new GeneralException(AuthErrorStatus.EMAIL_ALREADY_EXISTS);
         }
@@ -37,6 +43,7 @@ public class AuthService {
         Auth auth = new Auth(user, Auth.Provider.LOCAL, passwordHash);
         authRepository.save(auth);
 
+        emailAuthService.deleteVerified(request.email());
         String token = jwtProvider.generateAccessToken(request.email());
         return new TokenResponse(token);
     }
