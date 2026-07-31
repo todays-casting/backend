@@ -116,4 +116,26 @@ class DailyRecordServiceImplTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorStatus.DUPLICATE_RESOURCE);
     }
+
+    @Test
+    // 리스트를 제대로 반환하는지 테스트
+    void returnsRecordsWhenTagMatches() {
+        DailyRecord record = DailyRecord.create(1L, LocalDate.of(2026, 7, 9), "오늘 기록", List.of("GOOD"), List.of("따뜻해요"), List.of("로맨스"));
+        when(dailyRecordRepository.findByTags(1L, null, "따뜻해요", null))
+                .thenReturn(List.of(record));
+
+        List<DailyRecordResponse> response = dailyRecordService.getByTags(1L, null, "따뜻해요", null);
+
+        assertThat(response).hasSize(1);
+        assertThat(response.get(0).moodTags()).isEqualTo(List.of("따뜻해요"));
+    }
+
+    @Test
+    // 셋다 null로 호출했을때 진짜 400_3 오류가 발생하는지 테스트
+    void throwsMissingParameterWhenNoTagGiven() {
+        assertThatThrownBy(() -> dailyRecordService.getByTags(1L, null, null, null))
+                .isInstanceOf(GeneralException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorStatus.MISSING_PARAMETER);
+    }
 }

@@ -12,8 +12,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -76,5 +78,17 @@ public class DailyRecordServiceImpl implements DailyRecordService {
                 .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
 
         return DailyRecordConverter.toResponse(dailyRecord);
+    }
+
+    @Override
+    public List<DailyRecordResponse> getByTags(Long userId, String mood, String moodTag, String activityTag) {
+        // 셋 다 값이 없거나(null) 빈 문자열/공백이면 400_3 오류 발생
+        if (!StringUtils.hasText(mood) && !StringUtils.hasText(moodTag) && !StringUtils.hasText(activityTag)) {
+            throw new GeneralException(ErrorStatus.MISSING_PARAMETER);
+        }
+        List<DailyRecord> records = dailyRecordRepository.findByTags(userId, mood, moodTag, activityTag);
+        return records.stream()
+                .map(DailyRecordConverter::toResponse)
+                .toList();
     }
 }
