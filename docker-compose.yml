@@ -12,7 +12,10 @@ services:
       LOCAL_DB_URL: ${LOCAL_DB_URL}
       LOCAL_DB_USERNAME: ${LOCAL_DB_USERNAME}
       LOCAL_DB_PASSWORD: ${LOCAL_DB_PASSWORD}
-      
+      # 카카오 소셜 로그인 설정입니다.
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI}
+
       # S3 파일 저장소 접속 설정입니다. 실제 권한은 EC2 IAM Role 또는 로컬 AWS credential을 사용합니다.
       AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
       AWS_S3_REGION: ${AWS_S3_REGION}

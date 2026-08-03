@@ -51,4 +51,12 @@ public class Auth {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
+    public Auth(User user, Provider provider, String passwordHash, String providerUserId) {
+        this.user = user;
+        this.provider = provider;
+        this.passwordHash = passwordHash;
+        this.providerUserId = providerUserId;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
 }
