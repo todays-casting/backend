@@ -99,7 +99,7 @@ jobs:
             AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}
             AWS_S3_REGION=${{ secrets.AWS_S3_REGION }}
 
-            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
 
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             JWT_ACCESS_TOKEN_VALIDITY=${{ secrets.JWT_ACCESS_TOKEN_VALIDITY }}
