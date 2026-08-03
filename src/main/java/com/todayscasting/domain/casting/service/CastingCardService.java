@@ -5,10 +5,10 @@ import com.todayscasting.domain.casting.dto.response.CastingCardResponseDTO;
 
 public interface CastingCardService {
 
-    CastingCardResponseDTO createCastingCard(CastingCardRequestDTO request);
+    CastingCardResponseDTO createCastingCard(Long userId, CastingCardRequestDTO request);
 
-    CastingCardResponseDTO getCastingCard(Long dailyRecordId);
+    CastingCardResponseDTO getCastingCard(Long userId, Long dailyRecordId);
 
-    CastingCardResponseDTO toggleFavorite(Long dailyRecordId);
+    CastingCardResponseDTO toggleFavorite(Long userId, Long dailyRecordId);
 
 }

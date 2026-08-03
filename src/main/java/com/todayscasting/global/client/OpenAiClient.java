@@ -103,8 +103,9 @@ public class OpenAiClient {
     // OpenAI가 실제 제어문자가 아니라 "\u0085" 같은 이스케이프 표기를
     // 문자 그대로(백슬래시+u+4자리 hex) 출력하는 경우가 있어 이 패턴도 함께 제거
     private String removeLiteralUnicodeEscapeText(String text) {
-        // C1 제어문자 범위(\u0080~\u009F)와 알려진 문제 문자(제로폭 공백, 라인/문단 구분자)를 텍스트 패턴으로 매칭
-        return text.replaceAll("\\\\u00[89A-Fa-f][0-9A-Fa-f]", " ")
+        // C1 제어문자 범위(\u0080~\u009F)만 매칭 (범위를 [89]로 한정해 é(\u00E9) 같은
+        // 정상적인 라틴 확장 문자가 오삭제되는 것을 방지) + 알려진 문제 문자(제로폭 공백, 라인/문단 구분자)
+        return text.replaceAll("\\\\u00[89][0-9A-Fa-f]", " ")
                 .replaceAll("\\\\u200[Bb]", "")
                 .replaceAll("\\\\u202[89]", " ");
     }

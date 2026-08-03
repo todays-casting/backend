@@ -20,7 +20,8 @@ public class CastingCardController {
     public ApiResponse<CastingCardResponseDTO> createCastingCard(
             @Valid @RequestBody CastingCardRequestDTO request
     ) {
-        CastingCardResponseDTO result = castingCardService.createCastingCard(request);
+        Long userId = 1L; // TODO: 로그인 기능 붙으면 인증 정보에서 꺼내는 걸로 교체 (DailyRecordController와 동일한 패턴)
+        CastingCardResponseDTO result = castingCardService.createCastingCard(userId, request);
         return ApiResponse.of(SuccessStatus.CREATED, result);
     }
 
@@ -28,7 +29,8 @@ public class CastingCardController {
     public ApiResponse<CastingCardResponseDTO> getCastingCard(
             @PathVariable Long recordId
     ) {
-        CastingCardResponseDTO result = castingCardService.getCastingCard(recordId);
+        Long userId = 1L; // TODO: 로그인 기능 붙으면 인증 정보에서 꺼내는 걸로 교체
+        CastingCardResponseDTO result = castingCardService.getCastingCard(userId, recordId);
         return ApiResponse.onSuccess(result);
     }
 
@@ -36,7 +38,8 @@ public class CastingCardController {
     public ApiResponse<CastingCardResponseDTO> toggleFavorite(
             @PathVariable Long recordId
     ) {
-        CastingCardResponseDTO result = castingCardService.toggleFavorite(recordId);
+        Long userId = 1L; // TODO: 로그인 기능 붙으면 인증 정보에서 꺼내는 걸로 교체
+        CastingCardResponseDTO result = castingCardService.toggleFavorite(userId, recordId);
         return ApiResponse.onSuccess(result);
     }
 

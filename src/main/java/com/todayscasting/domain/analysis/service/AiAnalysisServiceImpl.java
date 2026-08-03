@@ -12,6 +12,7 @@ import com.todayscasting.domain.analysis.repository.AiAnalysisLogRepository;
 import com.todayscasting.domain.record.entity.DailyRecord;
 import com.todayscasting.domain.record.repository.DailyRecordRepository;
 import com.todayscasting.global.client.OpenAiClient;
+import com.todayscasting.global.client.OpenAiProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     private final AiAnalysisLogRepository aiAnalysisLogRepository;
     private final DailyRecordRepository dailyRecordRepository;
     private final OpenAiClient openAiClient;
+    private final OpenAiProperties openAiProperties;
 
     @Override
     public AiAnalysisResponseDTO requestAnalysis(AiAnalysisRequestDTO request) {
@@ -63,7 +65,7 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         AiAnalysisLog aiAnalysisLog = AiAnalysisLog.builder()
                 .dailyRecordId(request.getDailyRecordId())
                 .provider("OPENAI")
-                .model("gpt-5.6-luna")
+                .model(openAiProperties.getModel())
                 .prompt(buildPrompt(request.getDailyRecordId()))
                 .build();
 
@@ -77,30 +79,9 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     public void markSuccess(Long id, String rawResponse) {
         AiAnalysisLog log = aiAnalysisLogRepository.findById(id)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
-        log.markSuccess(sanitizeRawResponse(rawResponse));
+        // rawResponse의 제어문자 정제는 OpenAiClient.cleanJson()에서 이미 처리되므로 여기서는 그대로 저장
+        log.markSuccess(rawResponse);
         aiAnalysisLogRepository.save(log);
-    }
-
-    // OpenAiClient에서 이미 한 번 정제하지만, 저장 직전 한 번 더 걸러내는 이중 안전장치
-    private String sanitizeRawResponse(String text) {
-        if (text == null) {
-            return null;
-        }
-        // 문자 그대로의 "\u0085" 같은 이스케이프 텍스트 패턴 제거
-        String cleaned = text.replaceAll("\\\\u00[89A-Fa-f][0-9A-Fa-f]", " ")
-                .replaceAll("\\\\u200[Bb]", "")
-                .replaceAll("\\\\u202[89]", " ");
-        // 실제 눈에 안 보이는 제어문자 제거 (탭/줄바꿈/캐리지리턴은 보존)
-        StringBuilder sb = new StringBuilder(cleaned.length());
-        for (int i = 0; i < cleaned.length(); i++) {
-            char c = cleaned.charAt(i);
-            boolean isAllowedWhitespace = c == '\t' || c == '\n' || c == '\r';
-            if (Character.isISOControl(c) && !isAllowedWhitespace) {
-                continue;
-            }
-            sb.append(c);
-        }
-        return sb.toString();
     }
 
     public void markFailed(Long id, String errorMessage) {
@@ -213,7 +194,8 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         promptBuilder.append("  \"oneLineComment\": \"사용자에게 건네는 따뜻한 한 줄 코멘트 (50자 이내)\",\n");
         promptBuilder.append("  \"analysisSummary\": \"오늘 하루에 대한 짧은 분석 요약 (100자 이내)\"\n");
         promptBuilder.append("}\n");
-        promptBuilder.append("(위 score의 85는 예시일 뿐입니다. 실제 값은 위 채점 기준에 따라 계산한 0~100 사이의 정수여야 합니다.)\n");
+        promptBuilder.append("(위 score의 85는 예시일 뿐입니다. 실제 값은 위 채점 기준에 따라 계산한 60~95 사이의 정수여야 합니다. ");
+        promptBuilder.append("단, 아래 '특별 규칙'에 해당하는 미작성/무의미 기록일 때만 예외적으로 0을 사용하세요.)\n");
         promptBuilder.append("title은 영화/드라마 제목처럼, roleName은 그 안에서 맡은 배역 이름처럼 서로 다른 관점으로 표현하세요.\n");
         promptBuilder.append("반드시 위 8개 필드만 포함하고, 다른 필드는 절대 추가하지 마세요.\n\n");
 
