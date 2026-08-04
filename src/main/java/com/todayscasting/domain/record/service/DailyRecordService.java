@@ -18,4 +18,6 @@ public interface DailyRecordService {
     DailyRecordResponse getByDate(Long userId, LocalDate date);
 
     List<DailyRecordResponse> getByTags(Long userId, String mood, String moodTag, String activityTag);
+
+    DailyRecordResponse getById(Long userId, Long recordId);
 }
