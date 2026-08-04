@@ -72,6 +72,7 @@ public class DailyRecordServiceImpl implements DailyRecordService {
         dailyRecord.delete();
     }
 
+    // 일기 탭 하단의 "오늘의 기록보기"에서 쓰임
     @Override
     public DailyRecordResponse getByDate(Long userId, LocalDate date) {
         DailyRecord dailyRecord = dailyRecordRepository.findByUserIdAndRecordDateAndDeletedAtIsNull(userId, date)
