@@ -17,7 +17,8 @@ public enum AuthErrorStatus implements BaseErrorCode {
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_401_2", "유효하지 않은 토큰입니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTH_404_2", "존재하지 않는 사용자입니다."),
     EMAIL_NOT_VERIFIED(HttpStatus.FORBIDDEN, "AUTH_403_1", "이메일 인증이 필요합니다."),
-    INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "AUTH_400_1", "유효하지 않거나 만료된 인증 코드입니다.");
+    INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "AUTH_400_1", "유효하지 않거나 만료된 인증 코드입니다."),
+    EMAIL_VERIFICATION_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_429_1", "인증 시도 횟수를 초과했습니다. 이메일 인증을 다시 요청해 주세요.");
 
     private final HttpStatus status;
     private final String code;

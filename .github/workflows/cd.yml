@@ -108,7 +108,6 @@ jobs:
             MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
             MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
             EOF
-            EOF
             chmod 600 .env
 
 

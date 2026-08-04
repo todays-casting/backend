@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -43,7 +45,15 @@ public class AuthService {
         Auth auth = new Auth(user, Auth.Provider.LOCAL, passwordHash);
         authRepository.save(auth);
 
-        emailAuthService.deleteVerified(request.email());
+        String email = request.email();
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        emailAuthService.deleteVerified(email);
+                    }
+                }
+        );
         String token = jwtProvider.generateAccessToken(request.email());
         return new TokenResponse(token);
     }

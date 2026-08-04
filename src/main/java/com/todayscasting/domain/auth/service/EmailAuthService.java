@@ -22,6 +22,8 @@ public class EmailAuthService {
     private static final String VERIFIED_PREFIX = "email:verified:";
     private static final Duration CODE_TTL = Duration.ofMinutes(5);
     private static final Duration VERIFIED_TTL = Duration.ofMinutes(30);
+    private static final String ATTEMPT_PREFIX = "email:attempt:";
+    private static final int MAX_ATTEMPTS = 5;
 
     public void sendVerificationEmail(String email) {
         String code = generateCode();
@@ -35,11 +37,21 @@ public class EmailAuthService {
     }
 
     public void verifyCode(String email, String code) {
+        String attemptKey = ATTEMPT_PREFIX + email;
+        String attempts = redisTemplate.opsForValue().get(attemptKey);
+        if (attempts != null && Integer.parseInt(attempts) >= MAX_ATTEMPTS) {
+            throw new GeneralException(AuthErrorStatus.EMAIL_VERIFICATION_EXCEEDED);
+        }
+
         String stored = redisTemplate.opsForValue().get(CODE_PREFIX + email);
         if (stored == null || !stored.equals(code)) {
+            redisTemplate.opsForValue().increment(attemptKey);
+            redisTemplate.expire(attemptKey, CODE_TTL);
             throw new GeneralException(AuthErrorStatus.INVALID_VERIFICATION_CODE);
         }
+
         redisTemplate.delete(CODE_PREFIX + email);
+        redisTemplate.delete(attemptKey);
         redisTemplate.opsForValue().set(VERIFIED_PREFIX + email, "true", VERIFIED_TTL);
     }
 
