@@ -37,4 +37,9 @@ public interface DailyRecordRepository extends JpaRepository<DailyRecord, Long> 
             @Param("activityTag") String activityTag
     );
 
+    // 캘린더 마커용: 특정 유저의 월범위(start~end) 기록 전체 조회, 날짜 오름차순
+    List<DailyRecord> findByUserIdAndRecordDateBetweenAndDeletedAtIsNullOrderByRecordDateAsc(
+            Long userId, LocalDate startDate, LocalDate endDate
+    );
+
 }

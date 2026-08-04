@@ -138,4 +138,22 @@ class DailyRecordServiceImplTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorStatus.MISSING_PARAMETER);
     }
+
+    @Test
+    void returnsRecordWhenIdExists() {
+        DailyRecord record = DailyRecord.create(1L, LocalDate.of(2026, 7, 9), "오늘 기록", List.of("GOOD"), List.of(), List.of());
+        when(dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(1L, 1L)).thenReturn(Optional.of(record));
+
+        DailyRecordResponse response = dailyRecordService.getById(1L, 1L);
+
+        assertThat(response.content()).isEqualTo("오늘 기록");
+    }
+
+    @Test
+    void throwsNotFoundWhenIdDoesNotExist() {
+        when(dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(999L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> dailyRecordService.getById(1L, 999L))
+                .isInstanceOf(GeneralException.class);
+    }
 }

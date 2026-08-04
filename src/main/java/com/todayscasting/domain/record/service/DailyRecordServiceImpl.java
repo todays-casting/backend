@@ -81,6 +81,14 @@ public class DailyRecordServiceImpl implements DailyRecordService {
     }
 
     @Override
+    public DailyRecordResponse getById(Long userId, Long recordId) {
+        DailyRecord dailyRecord = dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(recordId, userId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
+
+        return DailyRecordConverter.toResponse(dailyRecord);
+    }
+
+    @Override
     public List<DailyRecordResponse> getByTags(Long userId, String mood, String moodTag, String activityTag) {
         // 셋 다 값이 없거나(null) 빈 문자열/공백이면 400_3 오류 발생
         if (!StringUtils.hasText(mood) && !StringUtils.hasText(moodTag) && !StringUtils.hasText(activityTag)) {

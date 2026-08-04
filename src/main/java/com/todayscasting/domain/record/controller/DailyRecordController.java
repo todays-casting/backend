@@ -56,6 +56,13 @@ public class DailyRecordController {
         return ApiResponse.onSuccess(response);
     }
 
+    @GetMapping("/{recordId}")
+    public ApiResponse<DailyRecordResponse> getById(@PathVariable Long recordId) {
+        Long userId = 1L; // TODO
+        DailyRecordResponse response = dailyRecordService.getById(userId, recordId);
+        return ApiResponse.onSuccess(response);
+    }
+
     @GetMapping("/tags")
     public ApiResponse<List<DailyRecordResponse>> getByTags(
             @RequestParam(required = false) String mood,
