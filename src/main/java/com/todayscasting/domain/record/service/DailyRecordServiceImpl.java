@@ -1,5 +1,7 @@
 package com.todayscasting.domain.record.service;
 
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.todayscasting.common.code.status.ErrorStatus;
 import com.todayscasting.common.exception.GeneralException;
 import com.todayscasting.domain.record.converter.DailyRecordConverter;
@@ -24,6 +26,7 @@ import java.util.Optional;
 public class DailyRecordServiceImpl implements DailyRecordService {
 
     private final DailyRecordRepository dailyRecordRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -90,14 +93,31 @@ public class DailyRecordServiceImpl implements DailyRecordService {
     }
 
     @Override
-    public List<DailyRecordResponse> getByTags(Long userId, String mood, String moodTag, String activityTag) {
-        // 셋 다 값이 없거나(null) 빈 문자열/공백이면 400_3 오류 발생
-        if (!StringUtils.hasText(mood) && !StringUtils.hasText(moodTag) && !StringUtils.hasText(activityTag)) {
+    public List<DailyRecordResponse> getByTags(Long userId, List<String> mood, String moodTag, List<String> activityTag) {
+        boolean moodEmpty = mood == null || mood.isEmpty();
+        boolean moodTagEmpty = !StringUtils.hasText(moodTag);
+        boolean activityTagEmpty = activityTag == null || activityTag.isEmpty();
+
+        // 셋 다 값이 없으면 400_3 오류 발생 (기존 로직 그대로)
+        if (moodEmpty && moodTagEmpty && activityTagEmpty) {
             throw new GeneralException(ErrorStatus.MISSING_PARAMETER);
         }
-        List<DailyRecord> records = dailyRecordRepository.findByTags(userId, mood, moodTag, activityTag);
+
+        String moodJson = moodEmpty ? null : toJsonArray(mood);
+        String activityTagJson = activityTagEmpty ? null : toJsonArray(activityTag);
+
+        List<DailyRecord> records = dailyRecordRepository.findByTags(userId, moodJson, moodTag, activityTagJson);
         return records.stream()
                 .map(DailyRecordConverter::toResponse)
                 .toList();
+    }
+
+    // List<String>을 JSON 배열 문자열(예: ["행복","설렘"])로 직렬화
+    private String toJsonArray(List<String> values) {
+        try {
+            return objectMapper.writeValueAsString(values);
+        } catch (JacksonException e) {
+            throw new GeneralException(ErrorStatus.INTERNAL_SERVER_ERROR, e);
+        }
     }
 }
