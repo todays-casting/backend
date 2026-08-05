@@ -38,7 +38,7 @@ public class KakaoClient {
         params.add("redirect_uri", redirectUri);
         params.add("code", code);
 
-        log.info("[KakaoClient] clientId={}, redirectUri={}, code={}", clientId, redirectUri, code);  // 추가
+        log.debug("[KakaoClient] clientId={}, redirectUri={}, code={}", clientId, redirectUri, code);  // 추가
 
         KakaoTokenResponse response = restClient.post()
                 .uri("https://kauth.kakao.com/oauth/token")
