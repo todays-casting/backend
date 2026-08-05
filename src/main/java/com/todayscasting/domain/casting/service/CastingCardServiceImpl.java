@@ -52,14 +52,12 @@ public class CastingCardServiceImpl implements CastingCardService {
 
         CastingCard castingCard = CastingCard.builder()
                 .dailyRecordId(request.getDailyRecordId())
-                .title(getTextOrDefault(analysisResult, "title", "오늘의 이야기"))
-                .subtitle(getTextOrDefault(analysisResult, "subtitle", null))
                 .genre(getTextOrDefault(analysisResult, "genre", "일상 드라마"))
                 .roleName(getTextOrDefault(analysisResult, "roleName", "오늘의 주인공"))
                 .highlight(getTextOrDefault(analysisResult, "highlight", null))
                 .oneLineComment(getTextOrDefault(analysisResult, "oneLineComment", null))
-                .score(getIntOrDefault(analysisResult, "score", 50))
-                .analysisSummary(getTextOrDefault(analysisResult, "analysisSummary", null))
+                .scenePhrase(getTextOrDefault(analysisResult, "scenePhrase", null))
+                .commentPhrase(getTextOrDefault(analysisResult, "commentPhrase", null))
                 .build();
 
         CastingCard savedCastingCard;
@@ -99,26 +97,6 @@ public class CastingCardServiceImpl implements CastingCardService {
             return node.get(field).asText();
         }
         return defaultValue;
-    }
-
-    private Integer getIntOrDefault(JsonNode node, String field, Integer defaultValue) {
-        if (!node.hasNonNull(field)) {
-            return defaultValue;
-        }
-        JsonNode valueNode = node.get(field);
-        int value;
-        if (valueNode.isNumber()) {
-            // "85.0" 같은 소수점 형태도 정수로 안전하게 변환
-            value = valueNode.asInt();
-        } else {
-            try {
-                value = (int) Double.parseDouble(valueNode.asText());
-            } catch (NumberFormatException e) {
-                return defaultValue;
-            }
-        }
-        // score는 항상 0~100 범위 안으로 고정 (모델이 범위를 벗어난 값을 줄 경우 대비)
-        return Math.max(0, Math.min(100, value));
     }
 
     @Override
