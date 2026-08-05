@@ -2,9 +2,7 @@ package com.todayscasting.domain.auth.service;
 
 import com.todayscasting.global.security.jwt.JwtProvider;
 import com.todayscasting.domain.auth.code.AuthErrorStatus;
-import com.todayscasting.domain.auth.dto.LoginRequest;
-import com.todayscasting.domain.auth.dto.SignUpRequest;
-import com.todayscasting.domain.auth.dto.TokenResponse;
+import com.todayscasting.domain.auth.dto.*;
 import com.todayscasting.domain.auth.entity.Auth;
 import com.todayscasting.domain.auth.repository.AuthRepository;
 import com.todayscasting.domain.user.entity.User;
@@ -28,24 +26,29 @@ public class AuthService {
     private final EmailAuthService emailAuthService;
 
     @Transactional
-    public TokenResponse signUp(SignUpRequest request) {
-
+    public SignupStep1Response signUpStep1(SignupStep1Request request) {
         if (!emailAuthService.isVerified(request.email())) {
             throw new GeneralException(AuthErrorStatus.EMAIL_NOT_VERIFIED);
         }
-
         if (userRepository.existsByEmail(request.email())) {
             throw new GeneralException(AuthErrorStatus.EMAIL_ALREADY_EXISTS);
         }
 
-        User user = new User(request.email(), request.nickname());
-        userRepository.save(user);
-
+        User user = userRepository.save(new User(request.email()));
         String passwordHash = passwordEncoder.encode(request.password());
-        Auth auth = new Auth(user, Auth.Provider.LOCAL, passwordHash);
-        authRepository.save(auth);
+        authRepository.save(new Auth(user, Auth.Provider.LOCAL, passwordHash));
 
-        String email = request.email();
+        return new SignupStep1Response(user.getId());
+    }
+
+    @Transactional
+    public TokenResponse signUpStep2(SignupStep2Request request) {
+        User user = userRepository.findById(request.userId())
+                .orElseThrow(() -> new GeneralException(AuthErrorStatus.USER_NOT_FOUND));
+
+        user.updateProfile(request.nickname(), request.age(), request.gender());
+
+        String email = user.getEmail();
         TransactionSynchronizationManager.registerSynchronization(
                 new TransactionSynchronization() {
                     @Override
@@ -54,8 +57,8 @@ public class AuthService {
                     }
                 }
         );
-        String token = jwtProvider.generateAccessToken(request.email());
-        return new TokenResponse(token);
+
+        return new TokenResponse(jwtProvider.generateAccessToken(email));
     }
 
     @Transactional(readOnly = true)
@@ -70,7 +73,6 @@ public class AuthService {
             throw new GeneralException(AuthErrorStatus.INVALID_PASSWORD);
         }
 
-        String token = jwtProvider.generateAccessToken(request.email());
-        return new TokenResponse(token);
+        return new TokenResponse(jwtProvider.generateAccessToken(request.email()));
     }
 }
