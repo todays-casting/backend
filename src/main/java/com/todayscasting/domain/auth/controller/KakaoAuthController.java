@@ -4,10 +4,8 @@ import com.todayscasting.domain.auth.dto.TokenResponse;
 import com.todayscasting.domain.auth.service.KakaoAuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
 
 @RestController
 @RequestMapping("/auth")
@@ -18,6 +16,11 @@ public class KakaoAuthController {
 
     @PostMapping("/kakao")
     public ResponseEntity<TokenResponse> kakaoLogin(@RequestParam String code) {
+        return ResponseEntity.ok(kakaoAuthService.kakaoLogin(code));
+    }
+
+    @GetMapping("/kakao/callback")
+    public ResponseEntity<TokenResponse> kakaoCallback(@RequestParam String code) {
         return ResponseEntity.ok(kakaoAuthService.kakaoLogin(code));
     }
 }
