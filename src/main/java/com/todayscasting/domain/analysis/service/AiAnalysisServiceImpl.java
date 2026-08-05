@@ -1,5 +1,7 @@
 package com.todayscasting.domain.analysis.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.todayscasting.common.code.status.ErrorStatus;
 import com.todayscasting.common.exception.GeneralException;
 import com.todayscasting.domain.analysis.converter.AiAnalysisConverter;
@@ -27,6 +29,7 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     private final DailyRecordRepository dailyRecordRepository;
     private final OpenAiClient openAiClient;
     private final OpenAiProperties openAiProperties;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public AiAnalysisResponseDTO requestAnalysis(AiAnalysisRequestDTO request) {
@@ -99,9 +102,20 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     }
 
     // 프롬프트의 "특별 규칙"에서 미작성/무의미 기록일 때 roleName을 항상 "하루 기록 미작성"으로
-    // 고정 응답하도록 못박아뒀으므로, 이 문자열 포함 여부로 미작성 케이스를 판별
+    // 고정 응답하도록 못박아뒀으므로, roleName 필드값이 정확히 일치하는지로 미작성 케이스를 판별.
+    // (전체 텍스트에 이 문구가 우연히 포함될 수 있어 단순 contains()는 오탐 위험이 있음 - CodeRabbit 지적 반영)
     private boolean isUnwrittenResult(String rawResponse) {
-        return rawResponse != null && rawResponse.contains("하루 기록 미작성");
+        if (rawResponse == null) {
+            return false;
+        }
+        try {
+            JsonNode node = objectMapper.readTree(rawResponse);
+            JsonNode roleNameNode = node.get("roleName");
+            return roleNameNode != null && "하루 기록 미작성".equals(roleNameNode.asText());
+        } catch (Exception e) {
+            // 파싱 실패 시에는 미작성 케이스로 단정하지 않고 기존 동작(markSuccess 경로)을 유지
+            return false;
+        }
     }
 
     @Override
