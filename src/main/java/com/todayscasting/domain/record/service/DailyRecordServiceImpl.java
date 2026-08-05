@@ -94,22 +94,32 @@ public class DailyRecordServiceImpl implements DailyRecordService {
 
     @Override
     public List<DailyRecordResponse> getByTags(Long userId, List<String> mood, String moodTag, List<String> activityTag) {
-        boolean moodEmpty = mood == null || mood.isEmpty();
-        boolean moodTagEmpty = !StringUtils.hasText(moodTag);
-        boolean activityTagEmpty = activityTag == null || activityTag.isEmpty();
+        List<String> normalizedMood = normalize(mood);
+        String normalizedMoodTag = StringUtils.hasText(moodTag) ? moodTag : null;
+        List<String> normalizedActivityTag = normalize(activityTag);
 
-        // 셋 다 값이 없으면 400_3 오류 발생 (기존 로직 그대로)
-        if (moodEmpty && moodTagEmpty && activityTagEmpty) {
+        if (normalizedMood == null && normalizedMoodTag == null && normalizedActivityTag == null) {
             throw new GeneralException(ErrorStatus.MISSING_PARAMETER);
         }
 
-        String moodJson = moodEmpty ? null : toJsonArray(mood);
-        String activityTagJson = activityTagEmpty ? null : toJsonArray(activityTag);
+        String moodJson = normalizedMood == null ? null : toJsonArray(normalizedMood);
+        String activityTagJson = normalizedActivityTag == null ? null : toJsonArray(normalizedActivityTag);
 
-        List<DailyRecord> records = dailyRecordRepository.findByTags(userId, moodJson, moodTag, activityTagJson);
+        List<DailyRecord> records = dailyRecordRepository.findByTags(userId, moodJson, normalizedMoodTag, activityTagJson);
         return records.stream()
                 .map(DailyRecordConverter::toResponse)
                 .toList();
+    }
+
+    // null/빈 리스트에서 빈 문자열 원소를 걸러내고, 남는 게 없으면 null(필터 스킵)로 취급
+    private List<String> normalize(List<String> values) {
+        if (values == null) {
+            return null;
+        }
+        List<String> filtered = values.stream()
+                .filter(StringUtils::hasText)
+                .toList();
+        return filtered.isEmpty() ? null : filtered;
     }
 
     // List<String>을 JSON 배열 문자열(예: ["행복","설렘"])로 직렬화
