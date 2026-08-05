@@ -25,7 +25,9 @@ public class CastingCard extends BaseEntity {
     @Column(name = "casting_image_id")
     private Long castingImageId;
 
-    @Column(nullable = false, length = 100)
+    // title은 확정된 UI(오늘의 캐스팅 결과, 히스토리 조회)에 노출되지 않아
+    // 더 이상 AI 분석 시 값을 생성/저장하지 않기로 결정 (2026-08-04) -> nullable로 변경 (V4 마이그레이션)
+    @Column(length = 100)
     private String title;
 
     @Column(length = 100)
@@ -44,6 +46,14 @@ public class CastingCard extends BaseEntity {
     @Column(name = "one_line_comment", columnDefinition = "TEXT")
     private String oneLineComment;
 
+    // "오늘의 캐스팅 결과" 화면 전용 필드. highlight/oneLineComment와 달리
+    // 완결된 문장이 아니라 짧고 함축적인 "문구" 스타일로 생성됨 (2026-08-05, V5 마이그레이션)
+    @Column(name = "scene_phrase", length = 100)
+    private String scenePhrase;
+
+    @Column(name = "comment_phrase", length = 100)
+    private String commentPhrase;
+
     @Column
     private Integer score;
 
@@ -59,6 +69,7 @@ public class CastingCard extends BaseEntity {
     @Builder
     private CastingCard(Long dailyRecordId, String title, String subtitle, String genre,
                         String roleName, String highlight, String oneLineComment,
+                        String scenePhrase, String commentPhrase,
                         Integer score, String analysisSummary) {
         this.dailyRecordId = dailyRecordId;
         this.title = title;
@@ -67,6 +78,8 @@ public class CastingCard extends BaseEntity {
         this.roleName = roleName;
         this.highlight = highlight;
         this.oneLineComment = oneLineComment;
+        this.scenePhrase = scenePhrase;
+        this.commentPhrase = commentPhrase;
         this.score = score;
         this.analysisSummary = analysisSummary;
         this.isFavorite = false;
