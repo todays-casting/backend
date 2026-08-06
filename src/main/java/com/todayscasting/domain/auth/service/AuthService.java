@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -23,9 +25,15 @@ public class AuthService {
     private final AuthRepository authRepository;
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
+    private final EmailAuthService emailAuthService;
 
     @Transactional
     public TokenResponse signUp(SignUpRequest request) {
+
+        if (!emailAuthService.isVerified(request.email())) {
+            throw new GeneralException(AuthErrorStatus.EMAIL_NOT_VERIFIED);
+        }
+
         if (userRepository.existsByEmail(request.email())) {
             throw new GeneralException(AuthErrorStatus.EMAIL_ALREADY_EXISTS);
         }
@@ -37,6 +45,15 @@ public class AuthService {
         Auth auth = new Auth(user, Auth.Provider.LOCAL, passwordHash);
         authRepository.save(auth);
 
+        String email = request.email();
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        emailAuthService.deleteVerified(email);
+                    }
+                }
+        );
         String token = jwtProvider.generateAccessToken(request.email());
         return new TokenResponse(token);
     }
