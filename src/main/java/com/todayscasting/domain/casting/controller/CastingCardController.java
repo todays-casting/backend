@@ -37,7 +37,7 @@ public class CastingCardController {
     @Operation(
             summary = "캐스팅 카드 조회",
             description = "dailyRecordId(recordId)로 생성된 캐스팅 카드를 조회합니다. " +
-                    "genre, roleName, highlight, oneLineComment, scenePhrase, commentPhrase, isFavorite 등을 반환합니다."
+                    "genre, roleName, highlight, oneLineComment, scenePhrase, commentPhrase, additionalMood, characterPhrase, isFavorite 등을 반환합니다."
     )
     @GetMapping("/{recordId}")
     public ApiResponse<CastingCardResponseDTO> getCastingCard(

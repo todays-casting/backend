@@ -13,6 +13,7 @@ import com.todayscasting.domain.casting.dto.response.CastingCardResponseDTO;
 import com.todayscasting.domain.casting.dto.response.CastingFavoriteCountResponseDTO;
 import com.todayscasting.domain.casting.entity.CastingCard;
 import com.todayscasting.domain.casting.repository.CastingCardRepository;
+import com.todayscasting.domain.record.entity.DailyRecord;
 import com.todayscasting.domain.record.repository.DailyRecordRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -20,11 +21,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class CastingCardServiceImpl implements CastingCardService {
+
+    private static final int MAX_ADDITIONAL_MOOD_COUNT = 2;
 
     private final CastingCardRepository castingCardRepository;
     private final AiAnalysisLogRepository aiAnalysisLogRepository;
@@ -36,7 +41,7 @@ public class CastingCardServiceImpl implements CastingCardService {
     public CastingCardResponseDTO createCastingCard(Long userId, CastingCardRequestDTO request) {
 
         // 본인 소유의 하루 기록인지 먼저 검증 (다른 사용자의 dailyRecordId로 캐스팅 카드를 만들지 못하게 차단)
-        validateOwnership(userId, request.getDailyRecordId());
+        DailyRecord dailyRecord = validateOwnership(userId, request.getDailyRecordId());
 
         // 같은 dailyRecordId로 이미 캐스팅 카드가 있으면 중복 생성 차단 (유니크 제약 위반이 그대로 500으로 새는 것 방지)
         if (castingCardRepository.findByDailyRecordId(request.getDailyRecordId()).isPresent()) {
@@ -62,7 +67,7 @@ public class CastingCardServiceImpl implements CastingCardService {
                 .oneLineComment(getTextOrDefault(analysisResult, "oneLineComment", null))
                 .scenePhrase(getTextOrDefault(analysisResult, "scenePhrase", null))
                 .commentPhrase(getTextOrDefault(analysisResult, "commentPhrase", null))
-                .additionalMood(getStringListOrEmpty(analysisResult, "additionalMood"))
+                .additionalMood(getAdditionalMoodOrEmpty(analysisResult, dailyRecord))
                 .characterPhrase(getTextOrDefault(analysisResult, "characterPhrase", null))
                 .build();
 
@@ -78,9 +83,10 @@ public class CastingCardServiceImpl implements CastingCardService {
     }
 
     // 요청한 dailyRecordId가 실제로 이 userId 소유인지 확인. 아니면(또는 존재하지 않으면) 404로 처리해
-    // "이 ID는 존재하지만 남의 것"이라는 정보 자체가 새어나가지 않도록 함
-    private void validateOwnership(Long userId, Long dailyRecordId) {
-        dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(dailyRecordId, userId)
+    // "이 ID는 존재하지만 남의 것"이라는 정보 자체가 새어나가지 않도록 함.
+    // 소유권 검증과 동시에, additionalMood 정제에 필요한 DailyRecord(사용자가 선택한 mood 포함)를 반환
+    private DailyRecord validateOwnership(Long userId, Long dailyRecordId) {
+        return dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(dailyRecordId, userId)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
     }
 
@@ -105,18 +111,38 @@ public class CastingCardServiceImpl implements CastingCardService {
         return defaultValue;
     }
 
-    // additionalMood처럼 AI가 배열로 응답하는 필드를 안전하게 List<String>으로 변환.
-    // 필드가 없거나 배열이 아니면 빈 리스트로 처리 (AI가 형식을 안 지켜도 에러 대신 안전하게 처리)
-    private List<String> getStringListOrEmpty(JsonNode node, String field) {
-        List<String> result = new ArrayList<>();
-        if (node.hasNonNull(field) && node.get(field).isArray()) {
-            node.get(field).forEach(item -> {
+    // additionalMood 필드를 안전하게 List<String>으로 변환하되, 필드 계약(contract)을 코드 레벨에서도 강제한다.
+    // AI가 프롬프트 지시(사용자가 이미 선택한 감정과 중복 금지, 최대 2개)를 어기고 응답하더라도
+    // 잘못된 데이터가 그대로 저장되지 않도록 이중으로 방어한다. (CodeRabbit 리뷰 반영)
+    private List<String> getAdditionalMoodOrEmpty(JsonNode node, DailyRecord dailyRecord) {
+        List<String> rawValues = new ArrayList<>();
+        if (node.hasNonNull("additionalMood") && node.get("additionalMood").isArray()) {
+            node.get("additionalMood").forEach(item -> {
                 if (item.isTextual() && !item.asText().isBlank()) {
-                    result.add(item.asText());
+                    rawValues.add(item.asText());
                 }
             });
         }
-        return result;
+
+        // 사용자가 이미 선택한 mood(오늘의 감정)는 additionalMood에서 제외
+        Set<String> selectedMoods = dailyRecord.getMood() != null
+                ? new LinkedHashSet<>(dailyRecord.getMood())
+                : Set.of();
+
+        // 중복 제거(순서 유지) + 이미 선택된 감정 제외 + 최대 2개까지만 반영
+        List<String> filtered = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (String value : rawValues) {
+            if (selectedMoods.contains(value) || seen.contains(value)) {
+                continue;
+            }
+            seen.add(value);
+            filtered.add(value);
+            if (filtered.size() == MAX_ADDITIONAL_MOOD_COUNT) {
+                break;
+            }
+        }
+        return filtered;
     }
 
     @Override
