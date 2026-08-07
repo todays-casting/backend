@@ -19,6 +19,8 @@ public class CastingCardConverter {
                 .oneLineComment(castingCard.getOneLineComment())
                 .scenePhrase(castingCard.getScenePhrase())
                 .commentPhrase(castingCard.getCommentPhrase())
+                .additionalMood(castingCard.getAdditionalMood())
+                .characterPhrase(castingCard.getCharacterPhrase())
                 .isFavorite(castingCard.getIsFavorite())
                 .generatedAt(castingCard.getGeneratedAt())
                 .createdAt(castingCard.getCreatedAt())

@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -18,6 +19,8 @@ public class CastingCardResponseDTO {
     private String oneLineComment;
     private String scenePhrase;
     private String commentPhrase;
+    private List<String> additionalMood;
+    private String characterPhrase;
     private Boolean isFavorite;
     private LocalDateTime generatedAt;
     private LocalDateTime createdAt;
