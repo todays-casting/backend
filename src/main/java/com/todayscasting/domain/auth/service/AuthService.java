@@ -12,8 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -23,13 +21,14 @@ public class AuthService {
     private final AuthRepository authRepository;
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
-    private final EmailAuthService emailAuthService;
 
     @Transactional
     public SignupStep1Response signUpStep1(SignupStep1Request request) {
-        if (!emailAuthService.isVerified(request.email())) {
-            throw new GeneralException(AuthErrorStatus.EMAIL_NOT_VERIFIED);
+
+        if (!request.password().equals(request.passwordConfirm())) {
+            throw new GeneralException(AuthErrorStatus.PASSWORD_CONFIRM_MISMATCH);
         }
+
         if (userRepository.existsByEmail(request.email())) {
             throw new GeneralException(AuthErrorStatus.EMAIL_ALREADY_EXISTS);
         }
@@ -48,17 +47,7 @@ public class AuthService {
 
         user.updateProfile(request.nickname(), request.age(), request.gender());
 
-        String email = user.getEmail();
-        TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        emailAuthService.deleteVerified(email);
-                    }
-                }
-        );
-
-        return new TokenResponse(jwtProvider.generateAccessToken(email));
+        return new TokenResponse(jwtProvider.generateAccessToken(user.getEmail()));
     }
 
     @Transactional(readOnly = true)
