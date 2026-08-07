@@ -180,12 +180,17 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         promptBuilder.append("\n이 기록을 바탕으로, 아래 JSON 형식으로만 답변해주세요. ");
         promptBuilder.append("다른 설명이나 마크다운 없이 순수 JSON만 반환해야 합니다.\n\n");
         promptBuilder.append("{\n");
-        promptBuilder.append("  \"genre\": \"오늘 하루의 분위기를 자유롭게 표현하는 장르명 ");
-        promptBuilder.append("(영화/드라마 장르처럼 2~6단어로, 매번 새롭고 창의적인 표현을 시도하세요. ");
-        promptBuilder.append("예: 로맨스 드라마, 하드보일드 형사물, 옴니버스 힐링극, 우당탕탕 시트콤 등. ");
-        promptBuilder.append("동일하거나 뻔한 장르 표현을 반복하지 말고, 매번 신선하고 구체적인 장르명을 시도하세요.)\",\n");
-        promptBuilder.append("  \"roleName\": \"오늘 하루의 배역 이름 (예: '따뜻한 조력자', '삼각관계의 빌런', '첫사랑 여주인공'처럼 ");
-        promptBuilder.append("짧고 인상적인 배역 이름으로, 20자 이내)\",\n");
+        promptBuilder.append("  \"genre\": \"다음 20개 장르 후보 중에서 메인 장르 1개, 보조 장르 1개를 각각 골라 자연스럽게 조합하세요 ");
+        promptBuilder.append("(장르 후보: 로맨스, 멜로, 코미디, 드라마, 액션, 스릴러, 미스터리, 공포, 판타지, SF, ");
+        promptBuilder.append("모험, 성장, 청춘, 일상, 힐링, 오피스·학원물, 스포츠, 재난, 서바이벌, 누아르·비극. ");
+        promptBuilder.append("예: '로맨틱 코미디'(로맨스+코미디), '성장 드라마'(성장+드라마), '미스터리 스릴러'(미스터리+스릴러), ");
+        promptBuilder.append("'오피스 코미디'(오피스·학원물+코미디)처럼 두 장르를 반드시 함께 조합해서 표현하세요. ");
+        promptBuilder.append("메인 장르 하나만 단독으로 쓰지 마세요. 하루 기록의 실제 내용과 분위기에 맞는 조합을 고르세요.)\",\n");
+        promptBuilder.append("  \"roleName\": \"오늘 하루의 배역 이름을 '짧은 수식어 + 명사' 구조로 간결하게 표현하세요 ");
+        promptBuilder.append("(예: '따뜻한 조력자', '우유부단한 화해자', '무심한 관찰자', '삼각관계의 빌런'처럼, ");
+        promptBuilder.append("수식어 하나 + 배역 명사 하나로만 압축하세요. ");
+        promptBuilder.append("'먼저 연락을 망설이는 화해자'처럼 설명하는 문장이나 절(주어+동사 구조)로 늘어지지 않게, ");
+        promptBuilder.append("최대한 짧고 명확한 수식어 하나로 압축하세요, 15자 이내)\",\n");
         promptBuilder.append("  \"highlight\": \"오늘의 기억에 남는 장면을 이미지가 그려지는 짧은 구절로 표현하세요 ");
         promptBuilder.append("(예: '해질 무렵, 함께 걸었던 골목길'처럼 장면을 그림처럼 떠올리게 하는 구절 형태. ");
         promptBuilder.append("반드시 하루 기록 본문에 실제로 쓰여 있는 내용만 바탕으로 표현하세요. ");
@@ -236,11 +241,12 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         promptBuilder.append("}\n");
         promptBuilder.append("반드시 위 8개 필드만 포함하고, 다른 필드는 절대 추가하지 마세요.\n\n");
 
-        // roleName/genre가 원본 단어를 그대로 조합하는 것을 방지하고, 감정/의미로 은유하도록 유도
-        promptBuilder.append("주의: roleName과 genre는 하루 기록에 나온 단어(예: 헬스장, 파스타, 운동 등)를 ");
+        // roleName이 원본 단어를 그대로 조합하는 것을 방지하고, 감정/의미로 은유하도록 유도
+        // (genre는 20개 고정 후보 조합 방식이라 은유 지침 대상에서 제외)
+        promptBuilder.append("주의: roleName은 하루 기록에 나온 단어(예: 헬스장, 파스타, 운동 등)를 ");
         promptBuilder.append("그대로 나열하거나 조합하지 마세요. 대신 그 하루가 주는 감정이나 의미를 영화적으로 은유해서 표현하세요. ");
         promptBuilder.append("예를 들어 '운동하고 파스타 먹은 날'이라면, 단어를 그대로 쓴 '땀과 파스타' 같은 표현 대신, ");
-        promptBuilder.append("그 안에 담긴 '스스로를 아낀 하루', '균형 잡힌 만족감' 같은 정서를 배역명과 장르에 녹여내세요.\n\n");
+        promptBuilder.append("그 안에 담긴 '스스로를 아낀 하루', '균형 잡힌 만족감' 같은 정서를 배역명에 녹여내세요.\n\n");
 
         // 톤 가이드: 즐거운 하루/힘든 하루에 따라 표현 조절 + 거친 표현 및 오글거리는 비유 방지
         promptBuilder.append("톤 가이드: 하루의 분위기에 맞춰 장르와 표현을 조절하세요. ");
@@ -252,10 +258,23 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         promptBuilder.append("표현은 감성적이되, 과도하게 오글거리거나 손발이 오그라드는 비유(예: 지나치게 거창한 우주적 비유, ");
         promptBuilder.append("과장된 시적 표현의 남발)는 피하고, 담백하면서도 인상에 남는 문장을 사용하세요.\n");
 
+        // 하루 기록 텍스트는 없지만 감정/키워드/분위기는 선택된 경우: 미작성으로 처리하지 않고
+        // "엑스트라/단역/조연" 고정 배역으로 정상 분석 (팀 피드백 반영, 2026-08-07)
+        promptBuilder.append("특별 규칙 A: 만약 하루 기록 텍스트는 비어있거나 매우 짧지만, ");
+        promptBuilder.append("'오늘의 감정', '오늘의 키워드', '오늘의 활동' 중 하나라도 선택된 값이 있다면, ");
+        promptBuilder.append("이건 미작성이 아니라 '텍스트 없이 감정만 남긴 하루'로 처리하세요. ");
+        promptBuilder.append("이 경우 roleName은 반드시 '엑스트라', '단역', '조연' 중 하나를 명사로 사용하고, ");
+        promptBuilder.append("선택된 감정을 자연스럽게 반영한 수식어를 붙이세요 ");
+        promptBuilder.append("(예: 우울/무기력이 선택됐다면 '침묵하는 엑스트라'. ");
+        promptBuilder.append("억지로 어울리지 않는 조합(예: 밝은 감정에 무리하게 '조연'을 붙이는 것)은 피하고, ");
+        promptBuilder.append("감정과 수식어, 명사가 자연스럽게 맞물리는 조합만 사용하세요). ");
+        promptBuilder.append("genre는 선택된 감정/키워드에 어울리는 조합으로 고르세요. ");
+        promptBuilder.append("highlight, oneLineComment, scenePhrase, commentPhrase, characterPhrase는 ");
+        promptBuilder.append("구체적인 장면을 지어내지 말고, 선택된 감정/키워드만으로 담백하게 표현하세요.\n");
+
         // 미작성/무의미 기록 처리 규칙: AI가 창의적으로 지어내지 않고 고정값 그대로 응답하게 함
-        // 프론트에서 완전히 빈 값은 이미 막고 있지만(API 직접 호출 등 예외 대비 최소 방어),
-        // 핵심은 "ㅁㄴㄱㄷㄴ" 같은 무작위 자음 나열, 의미를 알 수 없는 문자 조합까지 폭넓게 판단하는 것
-        promptBuilder.append("특별 규칙: 만약 하루 기록 내용이 비어있거나, ");
+        promptBuilder.append("특별 규칙 B: 위 규칙 A에 해당하지 않으면서(즉 감정/키워드/활동도 전혀 선택되지 않았으면서), ");
+        promptBuilder.append("동시에 하루 기록 내용이 비어있거나, ");
         promptBuilder.append("사람이 읽었을 때 실제 의미를 파악할 수 없는 무작위 문자 나열이라면 ");
         promptBuilder.append("(예: 단순 반복 'ㅇㅇ', '...', 'ㅎㅎ', 또는 키보드를 눌러본 듯한 무작위 자음/모음 나열 'ㅁㄴㄱㄷㄴ', 'ㅋㅇㅈㄷ' 등), ");
         promptBuilder.append("절대 창의적으로 해석하거나 지어내지 말고, 아래 값 그대로 정직하게 응답해주세요:\n");
