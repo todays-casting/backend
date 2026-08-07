@@ -2,6 +2,7 @@ package com.todayscasting.domain.auth.client;
 
 import com.todayscasting.domain.auth.dto.KakaoTokenResponse;
 import com.todayscasting.domain.auth.dto.KakaoUserResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -10,6 +11,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
+@Slf4j
 @Component
 public class KakaoClient {
 
@@ -35,6 +37,8 @@ public class KakaoClient {
         params.add("client_id", clientId);
         params.add("redirect_uri", redirectUri);
         params.add("code", code);
+
+        log.debug("[KakaoClient] clientId={}, redirectUri={}, code={}", clientId, redirectUri, code);  // 추가
 
         KakaoTokenResponse response = restClient.post()
                 .uri("https://kauth.kakao.com/oauth/token")

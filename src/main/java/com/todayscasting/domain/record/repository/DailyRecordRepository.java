@@ -24,13 +24,14 @@ public interface DailyRecordRepository extends JpaRepository<DailyRecord, Long> 
     Optional<DailyRecord> findByUserIdAndRecordDate(Long userId, LocalDate recordDate);
 
     // mood, moodTag, activityTag로 기록을 검색하는 쿼리 메서드
+// mood/activityTag는 JSON 배열 문자열(다중값, AND매칭), moodTag는 단일값
     @Query(value = """
     SELECT * FROM daily_records
     WHERE user_id = :userId
-      AND deleted_at IS NULL
-      AND (:mood IS NULL OR JSON_CONTAINS(mood, JSON_QUOTE(:mood)))
-      AND (:moodTag IS NULL OR JSON_CONTAINS(mood_tags, JSON_QUOTE(:moodTag)))
-      AND (:activityTag IS NULL OR JSON_CONTAINS(activity_tags, JSON_QUOTE(:activityTag)))
+    AND deleted_at IS NULL
+    AND (:mood IS NULL OR JSON_CONTAINS(mood, :mood))
+    AND (:moodTag IS NULL OR JSON_CONTAINS(mood_tags, JSON_QUOTE(:moodTag)))
+    AND (:activityTag IS NULL OR JSON_CONTAINS(activity_tags, :activityTag))
     """, nativeQuery = true)
     List<DailyRecord> findByTags(
             @Param("userId") Long userId,

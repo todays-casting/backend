@@ -78,9 +78,9 @@ public class DailyRecordController {
 
     @GetMapping("/tags")
     public ApiResponse<List<DailyRecordResponse>> getByTags(
-            @RequestParam(required = false) String mood,
+            @RequestParam(required = false) List<String> mood,
             @RequestParam(required = false) String moodTag,
-            @RequestParam(required = false) String activityTag,
+            @RequestParam(required = false) List<String> activityTag,
             @AuthenticationPrincipal String email
     ) {
         Long userId = authenticatedUserResolver.resolveUserId(email);
