@@ -59,12 +59,13 @@ class DailyRecordServiceImplTest {
     }
 
     @Test
-    void throwsNotFoundWhenDateHasNoRecord() {
+    void returnsNullWhenDateHasNoRecord() {
         when(dailyRecordRepository.findByUserIdAndRecordDateAndDeletedAtIsNull(1L, LocalDate.of(2026, 7, 9)))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> dailyRecordService.getByDate(1L, LocalDate.of(2026, 7, 9)))
-                .isInstanceOf(GeneralException.class);
+        DailyRecordResponse response = dailyRecordService.getByDate(1L, LocalDate.of(2026, 7, 9));
+
+        assertThat(response).isNull();
     }
 
     @Test
