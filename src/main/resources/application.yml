@@ -76,6 +76,9 @@ management:
   endpoint:
     health:
       show-details: never
+  health:
+    mail:
+      enabled: false
 
 # AWS S3 설정
 aws:
