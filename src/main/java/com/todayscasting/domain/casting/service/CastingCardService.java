@@ -2,6 +2,7 @@ package com.todayscasting.domain.casting.service;
 
 import com.todayscasting.domain.casting.dto.request.CastingCardRequestDTO;
 import com.todayscasting.domain.casting.dto.response.CastingCardResponseDTO;
+import com.todayscasting.domain.casting.dto.response.CastingFavoriteCountResponseDTO;
 
 public interface CastingCardService {
 
@@ -10,5 +11,7 @@ public interface CastingCardService {
     CastingCardResponseDTO getCastingCard(Long userId, Long dailyRecordId);
 
     CastingCardResponseDTO toggleFavorite(Long userId, Long dailyRecordId);
+
+    CastingFavoriteCountResponseDTO getFavoriteCount(Long userId);
 
 }

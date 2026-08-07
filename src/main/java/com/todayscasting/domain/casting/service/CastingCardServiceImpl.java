@@ -10,6 +10,7 @@ import com.todayscasting.domain.analysis.repository.AiAnalysisLogRepository;
 import com.todayscasting.domain.casting.converter.CastingCardConverter;
 import com.todayscasting.domain.casting.dto.request.CastingCardRequestDTO;
 import com.todayscasting.domain.casting.dto.response.CastingCardResponseDTO;
+import com.todayscasting.domain.casting.dto.response.CastingFavoriteCountResponseDTO;
 import com.todayscasting.domain.casting.entity.CastingCard;
 import com.todayscasting.domain.casting.repository.CastingCardRepository;
 import com.todayscasting.domain.record.repository.DailyRecordRepository;
@@ -17,6 +18,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -58,6 +62,8 @@ public class CastingCardServiceImpl implements CastingCardService {
                 .oneLineComment(getTextOrDefault(analysisResult, "oneLineComment", null))
                 .scenePhrase(getTextOrDefault(analysisResult, "scenePhrase", null))
                 .commentPhrase(getTextOrDefault(analysisResult, "commentPhrase", null))
+                .additionalMood(getStringListOrEmpty(analysisResult, "additionalMood"))
+                .characterPhrase(getTextOrDefault(analysisResult, "characterPhrase", null))
                 .build();
 
         CastingCard savedCastingCard;
@@ -99,6 +105,20 @@ public class CastingCardServiceImpl implements CastingCardService {
         return defaultValue;
     }
 
+    // additionalMood처럼 AI가 배열로 응답하는 필드를 안전하게 List<String>으로 변환.
+    // 필드가 없거나 배열이 아니면 빈 리스트로 처리 (AI가 형식을 안 지켜도 에러 대신 안전하게 처리)
+    private List<String> getStringListOrEmpty(JsonNode node, String field) {
+        List<String> result = new ArrayList<>();
+        if (node.hasNonNull(field) && node.get(field).isArray()) {
+            node.get(field).forEach(item -> {
+                if (item.isTextual() && !item.asText().isBlank()) {
+                    result.add(item.asText());
+                }
+            });
+        }
+        return result;
+    }
+
     @Override
     @Transactional(readOnly = true)
     public CastingCardResponseDTO getCastingCard(Long userId, Long dailyRecordId) {
@@ -119,6 +139,15 @@ public class CastingCardServiceImpl implements CastingCardService {
     private CastingCard findByDailyRecordIdOrThrow(Long dailyRecordId) {
         return castingCardRepository.findByDailyRecordId(dailyRecordId)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CastingFavoriteCountResponseDTO getFavoriteCount(Long userId) {
+        long count = castingCardRepository.countFavoritesByUserId(userId);
+        return CastingFavoriteCountResponseDTO.builder()
+                .favoriteCount(count)
+                .build();
     }
 
 }

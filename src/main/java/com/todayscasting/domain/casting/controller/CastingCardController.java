@@ -4,6 +4,7 @@ import com.todayscasting.common.response.ApiResponse;
 import com.todayscasting.common.code.status.SuccessStatus;
 import com.todayscasting.domain.casting.dto.request.CastingCardRequestDTO;
 import com.todayscasting.domain.casting.dto.response.CastingCardResponseDTO;
+import com.todayscasting.domain.casting.dto.response.CastingFavoriteCountResponseDTO;
 import com.todayscasting.domain.casting.service.CastingCardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -57,6 +58,18 @@ public class CastingCardController {
     ) {
         Long userId = 1L; // TODO: 로그인 기능 붙으면 인증 정보에서 꺼내는 걸로 교체
         CastingCardResponseDTO result = castingCardService.toggleFavorite(userId, recordId);
+        return ApiResponse.onSuccess(result);
+    }
+
+    @Operation(
+            summary = "즐겨찾기한 캐스팅 카드 개수 조회",
+            description = "로그인한 사용자가 즐겨찾기(하트)한 캐스팅 카드의 총 개수를 조회합니다. " +
+                    "마이페이지의 '찜한 카드' 개수 표시 등에 사용됩니다."
+    )
+    @GetMapping("/favorites/count")
+    public ApiResponse<CastingFavoriteCountResponseDTO> getFavoriteCount() {
+        Long userId = 1L; // TODO: 로그인 기능 붙으면 인증 정보에서 꺼내는 걸로 교체
+        CastingFavoriteCountResponseDTO result = castingCardService.getFavoriteCount(userId);
         return ApiResponse.onSuccess(result);
     }
 
