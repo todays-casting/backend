@@ -23,6 +23,8 @@ public class KakaoAuthService {
 
     @Transactional
     public TokenResponse kakaoLogin(String kakaoAccessToken) {
+        kakaoClient.validateToken(kakaoAccessToken);
+
         KakaoUserResponse userInfo = kakaoClient.getUserInfo(kakaoAccessToken);
 
         if (userInfo.id() == null
@@ -35,6 +37,10 @@ public class KakaoAuthService {
         String email = userInfo.kakaoAccount().email();
         String nickname = userInfo.kakaoAccount().profile().nickname();
         String providerId = String.valueOf(userInfo.id());
+
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("카카오 계정에 이메일 정보가 없습니다.");
+        }
 
         Auth auth = authRepository.findByProviderAndProviderUserId(Auth.Provider.KAKAO, providerId)
                 .orElseGet(() -> {
