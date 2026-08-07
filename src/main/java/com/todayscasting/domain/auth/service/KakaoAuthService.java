@@ -22,8 +22,7 @@ public class KakaoAuthService {
     private final JwtProvider jwtProvider;
 
     @Transactional
-    public TokenResponse kakaoLogin(String code) {
-        String kakaoAccessToken = kakaoClient.getToken(code).accessToken();
+    public TokenResponse kakaoLogin(String kakaoAccessToken) {
         KakaoUserResponse userInfo = kakaoClient.getUserInfo(kakaoAccessToken);
 
         if (userInfo.id() == null
@@ -45,8 +44,6 @@ public class KakaoAuthService {
                 });
 
         User user = auth.getUser();
-
         return new TokenResponse(jwtProvider.generateAccessToken(user.getEmail()));
-
     }
 }
