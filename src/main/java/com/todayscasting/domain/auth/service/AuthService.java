@@ -9,9 +9,12 @@ import com.todayscasting.domain.user.entity.User;
 import com.todayscasting.domain.user.repository.UserRepository;
 import com.todayscasting.common.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.mail.javamail.JavaMailSender;
+import java.security.SecureRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +24,7 @@ public class AuthService {
     private final AuthRepository authRepository;
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
+    private final JavaMailSender mailSender;
 
     @Transactional
     public SignupStep1Response signUpStep1(SignupStep1Request request) {
@@ -63,5 +67,52 @@ public class AuthService {
         }
 
         return new TokenResponse(jwtProvider.generateAccessToken(request.email()));
+    }
+
+    @Transactional
+    public void resetPassword(PasswordResetRequest request) {
+        User user = userRepository.findByEmailAndDeletedAtIsNull(request.email())
+                .orElseThrow(() -> new GeneralException(AuthErrorStatus.USER_NOT_FOUND));
+
+        Auth auth = authRepository.findByUserAndProvider(user, Auth.Provider.LOCAL)
+                .orElseThrow(() -> new GeneralException(AuthErrorStatus.AUTH_NOT_FOUND));
+
+        String tempPassword = generateTempPassword();
+        auth.updatePasswordHash(passwordEncoder.encode(tempPassword));
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(request.email());
+        message.setSubject("[투데이즈캐스팅] 임시 비밀번호 안내");
+        message.setText("임시 비밀번호: " + tempPassword + "\n로그인 후 비밀번호를 변경해주세요.");
+        mailSender.send(message);
+    }
+
+    private String generateTempPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder(10);
+        for (int i = 0; i < 10; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
+    }
+
+    @Transactional
+    public void changePassword(String email, PasswordChangeRequest request) {
+        if (!request.newPassword().equals(request.newPasswordConfirm())) {
+            throw new GeneralException(AuthErrorStatus.PASSWORD_CONFIRM_MISMATCH);
+        }
+
+        User user = userRepository.findByEmailAndDeletedAtIsNull(email)
+                .orElseThrow(() -> new GeneralException(AuthErrorStatus.USER_NOT_FOUND));
+
+        Auth auth = authRepository.findByUserAndProvider(user, Auth.Provider.LOCAL)
+                .orElseThrow(() -> new GeneralException(AuthErrorStatus.AUTH_NOT_FOUND));
+
+        if (!passwordEncoder.matches(request.currentPassword(), auth.getPasswordHash())) {
+            throw new GeneralException(AuthErrorStatus.INVALID_PASSWORD);
+        }
+
+        auth.updatePasswordHash(passwordEncoder.encode(request.newPassword()));
     }
 }
