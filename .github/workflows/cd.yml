@@ -107,9 +107,15 @@ jobs:
             KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}
             MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
             MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+            FIREBASE_ENABLED=true
+            FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}
+            GOOGLE_APPLICATION_CREDENTIALS=/app/secrets/firebase-service-account.json
             EOF
             chmod 600 .env
 
+            mkdir -p secrets
+            printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 }}' | base64 -d > secrets/firebase-service-account.json
+            chmod 600 secrets/firebase-service-account.json
 
             # Docker Compose v2/v1 자동 감지
             if docker compose version >/dev/null 2>&1; then

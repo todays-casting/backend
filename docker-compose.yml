@@ -24,6 +24,9 @@ services:
 
       # Gemini API 접속 설정입니다.
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      FIREBASE_ENABLED: ${FIREBASE_ENABLED:-false}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
 
       # 애플리케이션 실행 환경 설정입니다.
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
@@ -45,6 +48,9 @@ services:
 
     depends_on:
       - redis
+
+    volumes:
+      - ./secrets:/app/secrets:ro
 
   redis:
     image: redis:7-alpine

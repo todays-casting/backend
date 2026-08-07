@@ -60,6 +60,8 @@ jobs:
       JWT_ACCESS_TOKEN_VALIDITY: 3600000
       KAKAO_CLIENT_ID: ci-test-kakao-client-id
       KAKAO_REDIRECT_URI: http://localhost:8080/auth/kakao
+      FIREBASE_ENABLED: false
+      FIREBASE_PROJECT_ID: ci-test-firebase-project-id
 
     steps:
       - name: Checkout code

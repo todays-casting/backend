@@ -7,6 +7,9 @@ import com.todayscasting.domain.casting.dto.request.CastingCardRequestDTO;
 import com.todayscasting.domain.casting.dto.response.CastingCardResponseDTO;
 import com.todayscasting.domain.casting.entity.CastingCard;
 import com.todayscasting.domain.casting.repository.CastingCardRepository;
+import com.todayscasting.domain.notification.service.PushNotificationService;
+import com.todayscasting.domain.record.entity.DailyRecord;
+import com.todayscasting.domain.record.repository.DailyRecordRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,10 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class CastingCardServiceImpl implements CastingCardService {
 
     private final CastingCardRepository castingCardRepository;
+    private final DailyRecordRepository dailyRecordRepository;
+    private final PushNotificationService pushNotificationService;
 
     @Override
     @Transactional
     public CastingCardResponseDTO createCastingCard(CastingCardRequestDTO request) {
+        DailyRecord dailyRecord = dailyRecordRepository.findByIdAndDeletedAtIsNull(request.getDailyRecordId())
+                .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
 
         // TODO: AI 분석 결과(ai_analysis_logs)를 조회해서 실제 title/genre/roleName/score 등을 채워야 함
         //       AI 서버 완성 전까지는 임시 값으로 생성
@@ -36,6 +43,7 @@ public class CastingCardServiceImpl implements CastingCardService {
                 .build();
 
         CastingCard savedCastingCard = castingCardRepository.save(castingCard);
+        pushNotificationService.sendCastingCardReady(dailyRecord.getUserId(), savedCastingCard.getDailyRecordId());
 
         return CastingCardConverter.toResponseDTO(savedCastingCard);
     }
