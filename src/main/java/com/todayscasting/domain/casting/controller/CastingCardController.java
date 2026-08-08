@@ -5,12 +5,15 @@ import com.todayscasting.common.code.status.SuccessStatus;
 import com.todayscasting.domain.casting.dto.request.CastingCardRequestDTO;
 import com.todayscasting.domain.casting.dto.response.CastingCardResponseDTO;
 import com.todayscasting.domain.casting.dto.response.CastingFavoriteCountResponseDTO;
+import com.todayscasting.domain.casting.dto.response.CastingFavoriteResponseDTO;
 import com.todayscasting.domain.casting.service.CastingCardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Tag(name = "캐스팅 결과 API", description = "AI 분석 결과를 바탕으로 캐스팅 카드를 생성/조회/즐겨찾기하는 API")
 @RestController
@@ -70,6 +73,19 @@ public class CastingCardController {
     public ApiResponse<CastingFavoriteCountResponseDTO> getFavoriteCount() {
         Long userId = 1L; // TODO: 로그인 기능 붙으면 인증 정보에서 꺼내는 걸로 교체
         CastingFavoriteCountResponseDTO result = castingCardService.getFavoriteCount(userId);
+        return ApiResponse.onSuccess(result);
+    }
+
+    @Operation(
+            summary = "즐겨찾기한 캐스팅 카드 목록 조회",
+            description = "로그인한 사용자가 즐겨찾기(하트)한 캐스팅 카드 전체 목록을 최신순으로 조회합니다. " +
+                    "genre, roleName, highlight, oneLineComment, additionalMood, isFavorite, generatedAt을 반환합니다. " +
+                    "마이페이지의 '저장한 카드' 화면 등에 사용됩니다."
+    )
+    @GetMapping("/favorites")
+    public ApiResponse<List<CastingFavoriteResponseDTO>> getFavoriteList() {
+        Long userId = 1L; // TODO: 로그인 기능 붙으면 인증 정보에서 꺼내는 걸로 교체
+        List<CastingFavoriteResponseDTO> result = castingCardService.getFavoriteList(userId);
         return ApiResponse.onSuccess(result);
     }
 
