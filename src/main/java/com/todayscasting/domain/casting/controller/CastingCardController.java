@@ -7,10 +7,12 @@ import com.todayscasting.domain.casting.dto.response.CastingCardResponseDTO;
 import com.todayscasting.domain.casting.dto.response.CastingFavoriteCountResponseDTO;
 import com.todayscasting.domain.casting.dto.response.CastingFavoriteResponseDTO;
 import com.todayscasting.domain.casting.service.CastingCardService;
+import com.todayscasting.domain.record.support.AuthenticatedUserResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +24,7 @@ import java.util.List;
 public class CastingCardController {
 
     private final CastingCardService castingCardService;
+    private final AuthenticatedUserResolver authenticatedUserResolver;
 
     @Operation(
             summary = "캐스팅 카드 생성",
@@ -30,9 +33,10 @@ public class CastingCardController {
     )
     @PostMapping
     public ApiResponse<CastingCardResponseDTO> createCastingCard(
-            @Valid @RequestBody CastingCardRequestDTO request
+            @Valid @RequestBody CastingCardRequestDTO request,
+            @AuthenticationPrincipal String email
     ) {
-        Long userId = 1L; // TODO: 로그인 기능 붙으면 인증 정보에서 꺼내는 걸로 교체 (DailyRecordController와 동일한 패턴)
+        Long userId = authenticatedUserResolver.resolveUserId(email);
         CastingCardResponseDTO result = castingCardService.createCastingCard(userId, request);
         return ApiResponse.of(SuccessStatus.CREATED, result);
     }
@@ -44,9 +48,10 @@ public class CastingCardController {
     )
     @GetMapping("/{recordId}")
     public ApiResponse<CastingCardResponseDTO> getCastingCard(
-            @PathVariable Long recordId
+            @PathVariable Long recordId,
+            @AuthenticationPrincipal String email
     ) {
-        Long userId = 1L; // TODO: 로그인 기능 붙으면 인증 정보에서 꺼내는 걸로 교체
+        Long userId = authenticatedUserResolver.resolveUserId(email);
         CastingCardResponseDTO result = castingCardService.getCastingCard(userId, recordId);
         return ApiResponse.onSuccess(result);
     }
@@ -57,9 +62,10 @@ public class CastingCardController {
     )
     @PatchMapping("/{recordId}/favorite")
     public ApiResponse<CastingCardResponseDTO> toggleFavorite(
-            @PathVariable Long recordId
+            @PathVariable Long recordId,
+            @AuthenticationPrincipal String email
     ) {
-        Long userId = 1L; // TODO: 로그인 기능 붙으면 인증 정보에서 꺼내는 걸로 교체
+        Long userId = authenticatedUserResolver.resolveUserId(email);
         CastingCardResponseDTO result = castingCardService.toggleFavorite(userId, recordId);
         return ApiResponse.onSuccess(result);
     }
@@ -70,8 +76,10 @@ public class CastingCardController {
                     "마이페이지의 '찜한 카드' 개수 표시 등에 사용됩니다."
     )
     @GetMapping("/favorites/count")
-    public ApiResponse<CastingFavoriteCountResponseDTO> getFavoriteCount() {
-        Long userId = 1L; // TODO: 로그인 기능 붙으면 인증 정보에서 꺼내는 걸로 교체
+    public ApiResponse<CastingFavoriteCountResponseDTO> getFavoriteCount(
+            @AuthenticationPrincipal String email
+    ) {
+        Long userId = authenticatedUserResolver.resolveUserId(email);
         CastingFavoriteCountResponseDTO result = castingCardService.getFavoriteCount(userId);
         return ApiResponse.onSuccess(result);
     }
@@ -83,8 +91,10 @@ public class CastingCardController {
                     "마이페이지의 '저장한 카드' 화면 등에 사용됩니다."
     )
     @GetMapping("/favorites")
-    public ApiResponse<List<CastingFavoriteResponseDTO>> getFavoriteList() {
-        Long userId = 1L; // TODO: 로그인 기능 붙으면 인증 정보에서 꺼내는 걸로 교체
+    public ApiResponse<List<CastingFavoriteResponseDTO>> getFavoriteList(
+            @AuthenticationPrincipal String email
+    ) {
+        Long userId = authenticatedUserResolver.resolveUserId(email);
         List<CastingFavoriteResponseDTO> result = castingCardService.getFavoriteList(userId);
         return ApiResponse.onSuccess(result);
     }
