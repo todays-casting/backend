@@ -30,7 +30,10 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public AiAnalysisResponseDTO requestAnalysis(AiAnalysisRequestDTO request) {
+    public AiAnalysisResponseDTO requestAnalysis(Long userId, AiAnalysisRequestDTO request) {
+
+        // 본인 소유의 하루 기록인지 먼저 검증 (다른 사용자의 dailyRecordId로 분석 요청하지 못하게 차단)
+        validateOwnership(userId, request.getDailyRecordId());
 
         AiAnalysisLog savedLog = savePendingLog(request);
 
@@ -117,13 +120,15 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     }
 
     @Override
-    public AiAnalysisResponseDTO getAnalysisResult(Long dailyRecordId) {
+    public AiAnalysisResponseDTO getAnalysisResult(Long userId, Long dailyRecordId) {
+        validateOwnership(userId, dailyRecordId);
         AiAnalysisLog aiAnalysisLog = findByDailyRecordIdOrThrow(dailyRecordId);
         return AiAnalysisConverter.toResponseDTO(aiAnalysisLog);
     }
 
     @Override
-    public AiAnalysisStatusResponseDTO getAnalysisStatus(Long dailyRecordId) {
+    public AiAnalysisStatusResponseDTO getAnalysisStatus(Long userId, Long dailyRecordId) {
+        validateOwnership(userId, dailyRecordId);
         AiAnalysisLog aiAnalysisLog = findByDailyRecordIdOrThrow(dailyRecordId);
         return AiAnalysisConverter.toStatusResponseDTO(aiAnalysisLog);
     }
@@ -133,11 +138,16 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
                 .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
     }
 
+    // 요청한 dailyRecordId가 실제로 이 userId 소유인지 확인. 아니면(또는 존재하지 않으면) 404로 처리해
+    // "이 ID는 존재하지만 남의 것"이라는 정보 자체가 새어나가지 않도록 함.
+    private void validateOwnership(Long userId, Long dailyRecordId) {
+        dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(dailyRecordId, userId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
+    }
+
     private String buildPrompt(Long dailyRecordId) {
-        // 참고: dev 병합 이후 DailyRecordRepository의 findByIdAndDeletedAtIsNull(Long) 메서드가
-        // findByIdAndUserIdAndDeletedAtIsNull(Long, Long)로 대체되었으나, 이 메서드는 userId 정보가
-        // 없는 지점이라 그대로 쓸 수 없음. JpaRepository 기본 제공 findById로 조회 후,
-        // 삭제 여부는 코드에서 직접 필터링하는 방식으로 동일한 동작을 재현함 (CI 컴파일 에러 긴급 수정)
+        // dailyRecordRepository에는 findByIdAndDeletedAtIsNull(Long)이 존재하지 않으므로,
+        // findById + 코드 필터링으로 삭제 여부를 확인한다. (fix/ci-daily-record-repository, #70)
         DailyRecord dailyRecord = dailyRecordRepository.findById(dailyRecordId)
                 .filter(record -> record.getDeletedAt() == null)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
