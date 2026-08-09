@@ -134,7 +134,12 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     }
 
     private String buildPrompt(Long dailyRecordId) {
-        DailyRecord dailyRecord = dailyRecordRepository.findByIdAndDeletedAtIsNull(dailyRecordId)
+        // 참고: dev 병합 이후 DailyRecordRepository의 findByIdAndDeletedAtIsNull(Long) 메서드가
+        // findByIdAndUserIdAndDeletedAtIsNull(Long, Long)로 대체되었으나, 이 메서드는 userId 정보가
+        // 없는 지점이라 그대로 쓸 수 없음. JpaRepository 기본 제공 findById로 조회 후,
+        // 삭제 여부는 코드에서 직접 필터링하는 방식으로 동일한 동작을 재현함 (CI 컴파일 에러 긴급 수정)
+        DailyRecord dailyRecord = dailyRecordRepository.findById(dailyRecordId)
+                .filter(record -> record.getDeletedAt() == null)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
 
         StringBuilder promptBuilder = new StringBuilder();
