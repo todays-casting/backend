@@ -7,6 +7,8 @@ import com.todayscasting.domain.record.dto.request.DailyRecordUpdateRequest;
 import com.todayscasting.domain.record.dto.response.DailyRecordResponse;
 import com.todayscasting.domain.record.service.DailyRecordService;
 import com.todayscasting.domain.record.support.AuthenticatedUserResolver;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
+@Tag(name = "일일기록", description = "일일기록(daily record) 생성/조회/수정/삭제 API")
 @RestController
 @RequestMapping("/records")
 @RequiredArgsConstructor
@@ -25,6 +28,7 @@ public class DailyRecordController {
     private final DailyRecordService dailyRecordService;
     private final AuthenticatedUserResolver authenticatedUserResolver;
 
+    @Operation(summary = "일일기록 생성", description = "새로운 일일기록을 저장합니다. 같은 날짜에 삭제된 기록이 있으면 복구해서 덮어쓰고, 이미 활성 기록이 있으면 409(DUPLICATE_RESOURCE)를 반환합니다.")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<DailyRecordResponse> create(
@@ -36,6 +40,7 @@ public class DailyRecordController {
         return ApiResponse.of(SuccessStatus.CREATED, response);
     }
 
+    @Operation(summary = "일일기록 수정", description = "recordId에 해당하는 기록을 수정합니다. 본인 소유가 아니거나 삭제된 기록이면 404를 반환합니다.")
     @PutMapping("/{recordId}")
     public ApiResponse<DailyRecordResponse> update(
             @PathVariable Long recordId,
@@ -47,6 +52,7 @@ public class DailyRecordController {
         return ApiResponse.onSuccess(response);
     }
 
+    @Operation(summary = "일일기록 삭제", description = "recordId에 해당하는 기록을 소프트 삭제합니다.")
     @DeleteMapping("/{recordId}")
     public ApiResponse<Void> delete(
             @PathVariable Long recordId,
@@ -56,6 +62,7 @@ public class DailyRecordController {
         return ApiResponse.onSuccess();
     }
 
+    @Operation(summary = "날짜로 일일기록 조회", description = "특정 날짜의 기록을 조회합니다. 기록이 없으면 에러(404) 대신 200 응답이 나가고, 이때 result 필드는 생략됩니다(값이 없다는 뜻).")
     @GetMapping
     public ApiResponse<DailyRecordResponse> getByDate(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
@@ -66,6 +73,7 @@ public class DailyRecordController {
         return ApiResponse.onSuccess(response);
     }
 
+    @Operation(summary = "recordId로 일일기록 조회", description = "recordId로 기록 원문을 단건 조회합니다. 캘린더 미니카드 뒷면 등에서 사용합니다.")
     @GetMapping("/{recordId}")
     public ApiResponse<DailyRecordResponse> getById(
             @PathVariable Long recordId,
@@ -76,6 +84,7 @@ public class DailyRecordController {
         return ApiResponse.onSuccess(response);
     }
 
+    @Operation(summary = "태그로 일일기록 목록 조회", description = "mood/activityTag는 다중 선택(AND 매칭), moodTag는 단일 값으로 필터링합니다. 셋 다 비어있으면 400(MISSING_PARAMETER)을 반환합니다.")
     @GetMapping("/tags")
     public ApiResponse<List<DailyRecordResponse>> getByTags(
             @RequestParam(required = false) List<String> mood,

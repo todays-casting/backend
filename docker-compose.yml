@@ -22,8 +22,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_ACCESS_TOKEN_VALIDITY: ${JWT_ACCESS_TOKEN_VALIDITY:-3600000}
 
-      # Gemini API 접속 설정입니다.
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      # OpenAI API 접속 설정입니다.
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
 
       # 애플리케이션 실행 환경 설정입니다.
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
