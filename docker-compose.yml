@@ -15,6 +15,7 @@ services:
       # 카카오 소셜 로그인 설정입니다.
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
       KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI}
+      KAKAO_APP_ID: ${KAKAO_APP_ID}
 
       # S3 파일 저장소 접속 설정입니다. 실제 권한은 EC2 IAM Role 또는 로컬 AWS credential을 사용합니다.
       AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
