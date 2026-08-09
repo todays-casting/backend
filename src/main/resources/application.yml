@@ -86,16 +86,17 @@ aws:
     bucket: ${AWS_S3_BUCKET_NAME}
     region: ${AWS_S3_REGION}
 
-# Gemini API 설정 (AI 분석 요청 시 사용)
-gemini:
-  api-key: ${GEMINI_API_KEY}
-  model: gemini-3.5-flash
+# OpenAI API 설정 (AI 분석 요청 시 사용)
+openai:
+  api-key: ${OPENAI_API_KEY}
+  model: gpt-5.6-luna
 
 # JWT 설정
 jwt:
   secret: ${JWT_SECRET}
   access-token-expiration: ${JWT_ACCESS_TOKEN_VALIDITY:3600000}
+
 # 카카오 소셜 로그인 설정
 kakao:
-  client-id: ${KAKAO_CLIENT_ID}        # 카카오 개발자 콘솔 앱 키
-  redirect-uri: ${KAKAO_REDIRECT_URI}  # 인가 코드 받을 URL
+  client-id: ${KAKAO_CLIENT_ID}
+  app-id: ${KAKAO_APP_ID}
