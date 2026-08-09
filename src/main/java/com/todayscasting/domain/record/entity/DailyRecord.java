@@ -48,8 +48,16 @@ public class DailyRecord extends BaseEntity {
     @Column(name = "activity_tags", columnDefinition = "json")
     private List<String> activityTags;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Status status;
+
+    public enum Status {
+        DRAFT, COMPLETED
+    }
+
     public static DailyRecord create(Long userId, LocalDate recordDate, String content,
-                                     List<String> mood, List<String> moodTags, List<String> activityTags) {
+                                     List<String> mood, List<String> moodTags, List<String> activityTags, Status status) {
         DailyRecord record = new DailyRecord();
         record.userId = userId;
         record.recordDate = recordDate;
@@ -57,14 +65,16 @@ public class DailyRecord extends BaseEntity {
         record.mood = mood;
         record.moodTags = moodTags;
         record.activityTags = activityTags;
+        record.status = status != null ? status : Status.COMPLETED;
         return record;
     }
 
     // userId, recordDate는 한번 정해지면 바뀌지 않으니까 없음
-    public void update(String content, List<String> mood, List<String> moodTags, List<String> activityTags) {
+    public void update(String content, List<String> mood, List<String> moodTags, List<String> activityTags, Status status) {
         this.content = content;
         this.mood = mood;
         this.moodTags = moodTags;
         this.activityTags = activityTags;
+        this.status = status != null ? status : Status.COMPLETED;
     }
 }

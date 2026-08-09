@@ -35,14 +35,15 @@ class CalendarServiceImplTest {
     void returnsMarkersWithFavoriteFlagForRecordsInMonth() {
         YearMonth yearMonth = YearMonth.of(2025, 5);
 
-        DailyRecord record1 = DailyRecord.create(1L, LocalDate.of(2025, 5, 6), "내용1", List.of("GOOD"), List.of(), List.of());
+        DailyRecord record1 = DailyRecord.create(1L, LocalDate.of(2025, 5, 6), "내용1", List.of("GOOD"), List.of(), List.of(), DailyRecord.Status.COMPLETED);
         ReflectionTestUtils.setField(record1, "id", 10L);
 
-        DailyRecord record2 = DailyRecord.create(1L, LocalDate.of(2025, 5, 12), "내용2", List.of("GOOD"), List.of(), List.of());
+        DailyRecord record2 = DailyRecord.create(1L, LocalDate.of(2025, 5, 12), "내용2", List.of("GOOD"), List.of(), List.of(), DailyRecord.Status.COMPLETED);
+
         ReflectionTestUtils.setField(record2, "id", 20L);
 
-        when(dailyRecordRepository.findByUserIdAndRecordDateBetweenAndDeletedAtIsNullOrderByRecordDateAsc(
-                1L, yearMonth.atDay(1), yearMonth.atEndOfMonth()))
+        when(dailyRecordRepository.findByUserIdAndRecordDateBetweenAndStatusAndDeletedAtIsNullOrderByRecordDateAsc(
+                1L, yearMonth.atDay(1), yearMonth.atEndOfMonth(), DailyRecord.Status.COMPLETED))
                 .thenReturn(List.of(record1, record2));
 
         CastingCard favoriteCard = CastingCard.builder().dailyRecordId(20L).build();
@@ -63,8 +64,8 @@ class CalendarServiceImplTest {
     @Test
     void returnsEmptyListAndSkipsCastingQueryWhenNoRecordsInMonth() {
         YearMonth yearMonth = YearMonth.of(2025, 6);
-        when(dailyRecordRepository.findByUserIdAndRecordDateBetweenAndDeletedAtIsNullOrderByRecordDateAsc(
-                1L, yearMonth.atDay(1), yearMonth.atEndOfMonth()))
+        when(dailyRecordRepository.findByUserIdAndRecordDateBetweenAndStatusAndDeletedAtIsNullOrderByRecordDateAsc(
+                1L, yearMonth.atDay(1), yearMonth.atEndOfMonth(), DailyRecord.Status.COMPLETED))
                 .thenReturn(List.of());
 
         List<CalendarResponse> result = calendarService.getMonthlyCalendar(1L, yearMonth);
