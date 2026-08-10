@@ -14,6 +14,20 @@ public interface DailyRecordRepository extends JpaRepository<DailyRecord, Long> 
     // 삭제가 안된것들에서만 찾는 메서드
     Optional<DailyRecord> findByUserIdAndRecordDateAndDeletedAtIsNull(Long userId, LocalDate recordDate);
 
+    long countByUserIdAndStatusAndDeletedAtIsNull(Long userId, DailyRecord.Status status);
+
+    @Query("""
+            SELECT d.recordDate FROM DailyRecord d
+            WHERE d.userId = :userId
+              AND d.status = :status
+              AND d.deletedAt IS NULL
+            ORDER BY d.recordDate DESC
+            """)
+    List<LocalDate> findRecordDatesByUserIdAndStatusOrderByRecordDateDesc(
+            @Param("userId") Long userId,
+            @Param("status") DailyRecord.Status status
+    );
+
     // recordId, userId로 삭제되지 않은 dailyRecord를 찾음 (update/delete용, status 무관)
     Optional<DailyRecord> findByIdAndUserIdAndDeletedAtIsNull(Long id, Long userId);
 
