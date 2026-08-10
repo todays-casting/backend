@@ -30,7 +30,8 @@ public class CalendarServiceImpl implements CalendarService {
         LocalDate endDate = yearMonth.atEndOfMonth();
 
         List<DailyRecord> records = dailyRecordRepository
-                .findByUserIdAndRecordDateBetweenAndDeletedAtIsNullOrderByRecordDateAsc(userId, startDate, endDate);
+                .findByUserIdAndRecordDateBetweenAndStatusAndDeletedAtIsNullOrderByRecordDateAsc(
+                        userId, startDate, endDate, DailyRecord.Status.COMPLETED);
 
         if (records.isEmpty()) {
             return List.of();

@@ -37,7 +37,7 @@ class DailyRecordServiceImplTest {
     void createsDailyRecord() {
         DailyRecordCreateRequest request = new DailyRecordCreateRequest(
                 LocalDate.of(2026, 7, 9), "오늘 발표 준비 완료", List.of("GOOD"),
-                List.of("뿌듯함"), List.of("개발")
+                List.of("뿌듯함"), List.of("개발"), DailyRecord.Status.COMPLETED
         );
         DailyRecord saved = DailyRecordConverter.toEntity(1L, request);
         when(dailyRecordRepository.save(any(DailyRecord.class))).thenReturn(saved);
@@ -52,24 +52,25 @@ class DailyRecordServiceImplTest {
     void throwsNotFoundWhenUpdatingMissingRecord() {
         when(dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(999L, 1L)).thenReturn(Optional.empty());
 
-        DailyRecordUpdateRequest request = new DailyRecordUpdateRequest("내용", List.of("GOOD"), List.of(), List.of());
+        DailyRecordUpdateRequest request = new DailyRecordUpdateRequest("내용", List.of("GOOD"), List.of(), List.of(), DailyRecord.Status.COMPLETED);
 
         assertThatThrownBy(() -> dailyRecordService.update(1L, 999L, request))
                 .isInstanceOf(GeneralException.class);
     }
 
     @Test
-    void throwsNotFoundWhenDateHasNoRecord() {
+    void returnsNullWhenDateHasNoRecord() {
         when(dailyRecordRepository.findByUserIdAndRecordDateAndDeletedAtIsNull(1L, LocalDate.of(2026, 7, 9)))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> dailyRecordService.getByDate(1L, LocalDate.of(2026, 7, 9)))
-                .isInstanceOf(GeneralException.class);
+        DailyRecordResponse response = dailyRecordService.getByDate(1L, LocalDate.of(2026, 7, 9));
+
+        assertThat(response).isNull();
     }
 
     @Test
     void deletesDailyRecordAsSoftDelete() {
-        DailyRecord record = DailyRecord.create(1L, LocalDate.of(2026, 7, 9), "내용", List.of("GOOD"), List.of(), List.of());
+        DailyRecord record = DailyRecord.create(1L, LocalDate.of(2026, 7, 9), "내용", List.of("GOOD"), List.of(), List.of(), DailyRecord.Status.COMPLETED);
         when(dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(1L, 1L)).thenReturn(Optional.of(record));
 
         dailyRecordService.delete(1L, 1L);
@@ -79,10 +80,10 @@ class DailyRecordServiceImplTest {
 
     @Test
     void updatesDailyRecord() {
-        DailyRecord record = DailyRecord.create(1L, LocalDate.of(2026, 7, 9), "원래 내용", List.of("GOOD"), List.of(), List.of());
+        DailyRecord record = DailyRecord.create(1L, LocalDate.of(2026, 7, 9), "원래 내용", List.of("GOOD"), List.of(), List.of(), DailyRecord.Status.COMPLETED);
         when(dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(1L, 1L)).thenReturn(Optional.of(record));
 
-        DailyRecordUpdateRequest request = new DailyRecordUpdateRequest("수정된 내용", List.of("BAD"), List.of("피곤함"), List.of());
+        DailyRecordUpdateRequest request = new DailyRecordUpdateRequest("수정된 내용", List.of("BAD"), List.of("피곤함"), List.of(), DailyRecord.Status.COMPLETED);
 
         DailyRecordResponse response = dailyRecordService.update(1L, 1L, request);
 
@@ -92,7 +93,7 @@ class DailyRecordServiceImplTest {
 
     @Test
     void returnsRecordWhenDateHasRecord() {
-        DailyRecord record = DailyRecord.create(1L, LocalDate.of(2026, 7, 9), "오늘 기록", List.of("GOOD"), List.of(), List.of());
+        DailyRecord record = DailyRecord.create(1L, LocalDate.of(2026, 7, 9), "오늘 기록", List.of("GOOD"), List.of(), List.of(), DailyRecord.Status.COMPLETED);
         when(dailyRecordRepository.findByUserIdAndRecordDateAndDeletedAtIsNull(1L, LocalDate.of(2026, 7, 9)))
                 .thenReturn(Optional.of(record));
 
@@ -104,7 +105,7 @@ class DailyRecordServiceImplTest {
     @Test
     void throwsDuplicateResourceOnConcurrentCreate() {
         DailyRecordCreateRequest request = new DailyRecordCreateRequest(
-                LocalDate.of(2026, 7, 9), "동시 작성 시도", List.of("GOOD"), List.of(), List.of()
+                LocalDate.of(2026, 7, 9), "동시 작성 시도", List.of("GOOD"), List.of(), List.of(), DailyRecord.Status.COMPLETED
         );
         when(dailyRecordRepository.findByUserIdAndRecordDate(1L, LocalDate.of(2026, 7, 9)))
                 .thenReturn(Optional.empty());
@@ -117,10 +118,10 @@ class DailyRecordServiceImplTest {
                 .isEqualTo(ErrorStatus.DUPLICATE_RESOURCE);
     }
 
-    @Test
     // 리스트를 제대로 반환하는지 테스트
+    @Test
     void returnsRecordsWhenTagMatches() {
-        DailyRecord record = DailyRecord.create(1L, LocalDate.of(2026, 7, 9), "오늘 기록", List.of("GOOD"), List.of("따뜻해요"), List.of("로맨스"));
+        DailyRecord record = DailyRecord.create(1L, LocalDate.of(2026, 7, 9), "오늘 기록", List.of("GOOD"), List.of("따뜻해요"), List.of("로맨스"), DailyRecord.Status.COMPLETED);
         when(dailyRecordRepository.findByTags(1L, null, "따뜻해요", null))
                 .thenReturn(List.of(record));
 
@@ -130,8 +131,8 @@ class DailyRecordServiceImplTest {
         assertThat(response.get(0).moodTags()).isEqualTo(List.of("따뜻해요"));
     }
 
-    @Test
     // 셋다 null로 호출했을때 진짜 400_3 오류가 발생하는지 테스트
+    @Test
     void throwsMissingParameterWhenNoTagGiven() {
         assertThatThrownBy(() -> dailyRecordService.getByTags(1L, null, null, null))
                 .isInstanceOf(GeneralException.class)
@@ -141,8 +142,9 @@ class DailyRecordServiceImplTest {
 
     @Test
     void returnsRecordWhenIdExists() {
-        DailyRecord record = DailyRecord.create(1L, LocalDate.of(2026, 7, 9), "오늘 기록", List.of("GOOD"), List.of(), List.of());
-        when(dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(1L, 1L)).thenReturn(Optional.of(record));
+        DailyRecord record = DailyRecord.create(1L, LocalDate.of(2026, 7, 9), "오늘 기록", List.of("GOOD"), List.of(), List.of(), DailyRecord.Status.COMPLETED);
+        when(dailyRecordRepository.findByIdAndUserIdAndStatusAndDeletedAtIsNull(1L, 1L, DailyRecord.Status.COMPLETED))
+                .thenReturn(Optional.of(record));
 
         DailyRecordResponse response = dailyRecordService.getById(1L, 1L);
 
@@ -151,7 +153,8 @@ class DailyRecordServiceImplTest {
 
     @Test
     void throwsNotFoundWhenIdDoesNotExist() {
-        when(dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(999L, 1L)).thenReturn(Optional.empty());
+        when(dailyRecordRepository.findByIdAndUserIdAndStatusAndDeletedAtIsNull(999L, 1L, DailyRecord.Status.COMPLETED))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> dailyRecordService.getById(1L, 999L))
                 .isInstanceOf(GeneralException.class);

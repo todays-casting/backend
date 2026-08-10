@@ -15,6 +15,7 @@ services:
       # 카카오 소셜 로그인 설정입니다.
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
       KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI}
+      KAKAO_APP_ID: ${KAKAO_APP_ID}
 
       # S3 파일 저장소 접속 설정입니다. 실제 권한은 EC2 IAM Role 또는 로컬 AWS credential을 사용합니다.
       AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
@@ -22,11 +23,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_ACCESS_TOKEN_VALIDITY: ${JWT_ACCESS_TOKEN_VALIDITY:-3600000}
 
-      # Gemini API 접속 설정입니다.
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      FIREBASE_ENABLED: ${FIREBASE_ENABLED:-false}
-      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
-      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+      # OpenAI API 접속 설정입니다.
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
 
       # 애플리케이션 실행 환경 설정입니다.
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
@@ -48,9 +46,6 @@ services:
 
     depends_on:
       - redis
-
-    volumes:
-      - ./secrets:/app/secrets:ro
 
   redis:
     image: redis:7-alpine

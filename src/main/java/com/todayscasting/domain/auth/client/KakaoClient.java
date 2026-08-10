@@ -1,14 +1,11 @@
 package com.todayscasting.domain.auth.client;
 
-import com.todayscasting.domain.auth.dto.KakaoTokenResponse;
+import com.todayscasting.domain.auth.dto.KakaoTokenInfoResponse;
 import com.todayscasting.domain.auth.dto.KakaoUserResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
 @Slf4j
@@ -16,6 +13,9 @@ import org.springframework.web.client.RestClient;
 public class KakaoClient {
 
     private final RestClient restClient;
+
+    @Value("${kakao.app-id}")
+    private Long appId;
 
     public KakaoClient() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -25,32 +25,20 @@ public class KakaoClient {
                 .requestFactory(factory)
                 .build();
     }
-    @Value("${kakao.client-id}")
-    private String clientId;
 
-    @Value("${kakao.redirect-uri}")
-    private String redirectUri;
-
-    public KakaoTokenResponse getToken(String code) {
-        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        params.add("grant_type", "authorization_code");
-        params.add("client_id", clientId);
-        params.add("redirect_uri", redirectUri);
-        params.add("code", code);
-
-        log.debug("[KakaoClient] clientId={}, redirectUri={}, code={}", clientId, redirectUri, code);  // 추가
-
-        KakaoTokenResponse response = restClient.post()
-                .uri("https://kauth.kakao.com/oauth/token")
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body(params)
+    public void validateToken(String accessToken) {
+        KakaoTokenInfoResponse response = restClient.get()
+                .uri("https://kapi.kakao.com/v1/user/access_token_info")
+                .header("Authorization", "Bearer " + accessToken)
                 .retrieve()
-                .body(KakaoTokenResponse.class);
+                .body(KakaoTokenInfoResponse.class);
 
-        if (response == null || response.accessToken() == null || response.accessToken().isBlank()) {
-            throw new RuntimeException("카카오 액세스 토큰을 가져올 수 없습니다.");
+        if (response == null) {
+            throw new RuntimeException("카카오 토큰 정보를 가져올 수 없습니다.");
         }
-        return response;
+        if (!appId.equals(response.appId())) {
+            throw new RuntimeException("유효하지 않은 카카오 토큰입니다.");
+        }
     }
 
     public KakaoUserResponse getUserInfo(String accessToken) {
