@@ -30,4 +30,16 @@ public interface CastingCardRepository extends JpaRepository<CastingCard, Long> 
             """)
     long countFavoritesByUserId(@Param("userId") Long userId);
 
+    // 마이페이지 "저장한 카드" 목록 조회용. 위 countFavoritesByUserId와 동일한 조인 방식으로
+    // 해당 유저 소유의 기록 중 즐겨찾기된 캐스팅 카드 전체를 최신순으로 조회한다. (이슈 #72)
+    @Query("""
+            SELECT c FROM CastingCard c
+            JOIN DailyRecord d ON c.dailyRecordId = d.id
+            WHERE d.userId = :userId
+              AND c.isFavorite = true
+              AND d.deletedAt IS NULL
+            ORDER BY c.generatedAt DESC
+            """)
+    List<CastingCard> findFavoritesByUserId(@Param("userId") Long userId);
+
 }
