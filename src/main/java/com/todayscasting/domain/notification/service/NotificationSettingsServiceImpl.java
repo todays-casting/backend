@@ -38,6 +38,10 @@ public class NotificationSettingsServiceImpl implements NotificationSettingsServ
 
     private UserSettings getOrCreate(Long userId) {
         return userSettingsRepository.findByUserIdAndDeletedAtIsNull(userId)
-                .orElseGet(() -> userSettingsRepository.save(UserSettings.createDefault(userId)));
+                .orElseGet(() -> {
+                    userSettingsRepository.ensureDefaultSettings(userId);
+                    return userSettingsRepository.findByUserIdAndDeletedAtIsNull(userId)
+                            .orElseThrow(() -> new GeneralException(ErrorStatus.INTERNAL_SERVER_ERROR));
+                });
     }
 }

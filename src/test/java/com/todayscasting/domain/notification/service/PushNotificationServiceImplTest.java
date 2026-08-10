@@ -11,10 +11,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,14 +35,20 @@ class PushNotificationServiceImplTest {
     @Mock
     private ObjectProvider<FirebaseMessaging> firebaseMessagingProvider;
 
+    @Mock
+    private PlatformTransactionManager transactionManager;
+
     private PushNotificationServiceImpl pushNotificationService;
 
     @BeforeEach
     void setUp() {
+        when(transactionManager.getTransaction(any(TransactionDefinition.class)))
+                .thenReturn(new SimpleTransactionStatus());
         pushNotificationService = new PushNotificationServiceImpl(
                 userFcmTokenRepository,
                 userSettingsRepository,
-                firebaseMessagingProvider
+                firebaseMessagingProvider,
+                transactionManager
         );
     }
 

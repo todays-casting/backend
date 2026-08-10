@@ -9,10 +9,13 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 
 @Component
 @RequiredArgsConstructor
 public class DailyRecordReminderScheduler {
+
+    private static final ZoneId REMINDER_ZONE = ZoneId.of("Asia/Seoul");
 
     private final UserSettingsRepository userSettingsRepository;
     private final DailyRecordRepository dailyRecordRepository;
@@ -20,8 +23,8 @@ public class DailyRecordReminderScheduler {
 
     @Scheduled(cron = "0 * * * * *", zone = "Asia/Seoul")
     public void sendDailyRecordReminders() {
-        LocalDate today = LocalDate.now();
-        LocalTime currentMinute = LocalTime.now().withSecond(0).withNano(0);
+        LocalDate today = LocalDate.now(REMINDER_ZONE);
+        LocalTime currentMinute = LocalTime.now(REMINDER_ZONE).withSecond(0).withNano(0);
 
         for (UserSettings settings : userSettingsRepository
                 .findByPushEnabledTrueAndDailyReminderEnabledTrueAndDailyReminderTimeAndDeletedAtIsNull(currentMinute)) {

@@ -14,18 +14,20 @@ import com.todayscasting.domain.notification.repository.UserSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.List;
 import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class PushNotificationServiceImpl implements PushNotificationService {
 
     private final UserFcmTokenRepository userFcmTokenRepository;
     private final UserSettingsRepository userSettingsRepository;
     private final ObjectProvider<FirebaseMessaging> firebaseMessagingProvider;
+    private final PlatformTransactionManager transactionManager;
 
     @Override
     public PushNotificationResponse sendToUser(Long userId, PushNotificationRequest request) {
@@ -60,7 +62,8 @@ public class PushNotificationServiceImpl implements PushNotificationService {
     }
 
     private PushNotificationResponse send(Long userId, PushNotificationRequest request, boolean failWhenUnavailable) {
-        if (!isPushEnabled(userId)) {
+        NotificationTargets targets = loadTargets(userId);
+        if (!targets.pushEnabled()) {
             return new PushNotificationResponse(0, 0);
         }
 
@@ -75,9 +78,9 @@ public class PushNotificationServiceImpl implements PushNotificationService {
         int successCount = 0;
         int failureCount = 0;
 
-        for (UserFcmToken userFcmToken : userFcmTokenRepository.findByUserIdAndDeletedAtIsNull(userId)) {
+        for (String token : targets.tokens()) {
             try {
-                firebaseMessaging.send(toMessage(userFcmToken.getToken(), request));
+                firebaseMessaging.send(toMessage(token, request));
                 successCount++;
             } catch (FirebaseMessagingException e) {
                 failureCount++;
@@ -87,10 +90,25 @@ public class PushNotificationServiceImpl implements PushNotificationService {
         return new PushNotificationResponse(successCount, failureCount);
     }
 
-    private boolean isPushEnabled(Long userId) {
-        return userSettingsRepository.findByUserIdAndDeletedAtIsNull(userId)
-                .map(settings -> settings.isPushEnabled())
-                .orElse(true);
+    private NotificationTargets loadTargets(Long userId) {
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        transactionTemplate.setReadOnly(true);
+        return transactionTemplate.execute(status -> {
+            boolean pushEnabled = userSettingsRepository.findByUserIdAndDeletedAtIsNull(userId)
+                    .map(settings -> settings.isPushEnabled())
+                    .orElse(true);
+            if (!pushEnabled) {
+                return new NotificationTargets(false, List.of());
+            }
+
+            List<String> tokens = userFcmTokenRepository.findByUserIdAndDeletedAtIsNull(userId).stream()
+                    .map(UserFcmToken::getToken)
+                    .toList();
+            return new NotificationTargets(true, tokens);
+        });
+    }
+
+    private record NotificationTargets(boolean pushEnabled, List<String> tokens) {
     }
 
     @SuppressWarnings("deprecation")
