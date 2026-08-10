@@ -14,12 +14,16 @@ import com.todayscasting.domain.casting.dto.response.CastingFavoriteCountRespons
 import com.todayscasting.domain.casting.dto.response.CastingFavoriteResponseDTO;
 import com.todayscasting.domain.casting.entity.CastingCard;
 import com.todayscasting.domain.casting.repository.CastingCardRepository;
+import com.todayscasting.domain.notification.service.PushNotificationService;
 import com.todayscasting.domain.record.entity.DailyRecord;
 import com.todayscasting.domain.record.repository.DailyRecordRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -28,6 +32,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CastingCardServiceImpl implements CastingCardService {
 
     private static final int MAX_ADDITIONAL_MOOD_COUNT = 2;
@@ -35,6 +40,7 @@ public class CastingCardServiceImpl implements CastingCardService {
     private final CastingCardRepository castingCardRepository;
     private final AiAnalysisLogRepository aiAnalysisLogRepository;
     private final DailyRecordRepository dailyRecordRepository;
+    private final PushNotificationService pushNotificationService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -80,7 +86,31 @@ public class CastingCardServiceImpl implements CastingCardService {
             throw new GeneralException(ErrorStatus.INVALID_REQUEST);
         }
 
+        notifyCastingCardReadyAfterCommit(userId, savedCastingCard.getDailyRecordId());
+
         return CastingCardConverter.toResponseDTO(savedCastingCard);
+    }
+
+    private void notifyCastingCardReadyAfterCommit(Long userId, Long dailyRecordId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            sendCastingCardReadyNotification(userId, dailyRecordId);
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                sendCastingCardReadyNotification(userId, dailyRecordId);
+            }
+        });
+    }
+
+    private void sendCastingCardReadyNotification(Long userId, Long dailyRecordId) {
+        try {
+            pushNotificationService.sendCastingCardReady(userId, dailyRecordId);
+        } catch (RuntimeException e) {
+            log.warn("Failed to send casting card ready notification. userId={}, dailyRecordId={}", userId, dailyRecordId, e);
+        }
     }
 
     // 요청한 dailyRecordId가 실제로 이 userId 소유인지 확인. 아니면(또는 존재하지 않으면) 404로 처리해
