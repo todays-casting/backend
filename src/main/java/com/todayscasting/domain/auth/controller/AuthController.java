@@ -4,6 +4,7 @@ import com.todayscasting.domain.auth.dto.*;
 import com.todayscasting.domain.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -52,5 +53,31 @@ public class AuthController {
             @RequestBody @Valid PasswordChangeRequest request) {
         authService.changePassword(email, request);
         return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "로그아웃", description = "현재 토큰을 블랙리스트에 추가합니다. JWT 인증 필요.")
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletRequest request) {
+        String token = resolveToken(request);
+        authService.logout(token);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "회원 탈퇴", description = "계정을 삭제합니다. JWT 인증 필요.")
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> withdraw(
+            @AuthenticationPrincipal String email,
+            HttpServletRequest request) {
+        String token = resolveToken(request);
+        authService.withdraw(email, token);
+        return ResponseEntity.ok().build();
+    }
+
+    private String resolveToken(HttpServletRequest request) {
+        String bearer = request.getHeader("Authorization");
+        if (bearer != null && bearer.startsWith("Bearer ")) {
+            return bearer.substring(7);
+        }
+        return null;
     }
 }

@@ -44,6 +44,10 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
 
     # Spring Boot 테스트 datasource는 GitHub Actions의 MySQL 서비스를 바라봅니다.
     env:
@@ -63,6 +67,8 @@ jobs:
       KAKAO_APP_ID: 0
       MAIL_USERNAME: ci-test@gmail.com
       MAIL_PASSWORD: ci-test-password
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
 
     steps:
       - name: Checkout code

@@ -108,6 +108,8 @@ jobs:
             KAKAO_APP_ID=${{ secrets.KAKAO_APP_ID }}
             MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
             MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+            REDIS_HOST=${{ secrets.REDIS_HOST }}
+            REDIS_PORT=${{ secrets.REDIS_PORT }}
             FIREBASE_ENABLED=true
             FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}
             GOOGLE_APPLICATION_CREDENTIALS=/app/secrets/firebase-service-account.json

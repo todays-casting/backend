@@ -8,6 +8,7 @@ import com.todayscasting.domain.auth.repository.AuthRepository;
 import com.todayscasting.domain.user.entity.User;
 import com.todayscasting.domain.user.repository.UserRepository;
 import com.todayscasting.common.exception.GeneralException;
+import com.todayscasting.global.security.jwt.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,6 +26,7 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Transactional
     public SignupStep1Response signUpStep1(SignupStep1Request request) {
@@ -114,5 +116,20 @@ public class AuthService {
         }
 
         auth.updatePasswordHash(passwordEncoder.encode(request.newPassword()));
+    }
+    public void logout(String token) {
+        long expiration = jwtProvider.getExpiration(token);
+        if (expiration > 0) {
+            tokenBlacklistService.addToBlacklist(token, expiration);
+        }
+    }
+
+    @Transactional
+    public void withdraw(String email, String token) {
+        User user = userRepository.findByEmailAndDeletedAtIsNull(email)
+                .orElseThrow(() -> new GeneralException(AuthErrorStatus.USER_NOT_FOUND));
+        user.withdraw();
+        authRepository.findAllByUser(user).forEach(Auth::withdraw);
+        logout(token);
     }
 }
