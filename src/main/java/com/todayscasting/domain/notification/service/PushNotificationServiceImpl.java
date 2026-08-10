@@ -10,6 +10,7 @@ import com.todayscasting.domain.notification.dto.response.PushNotificationRespon
 import com.todayscasting.domain.notification.entity.NotificationType;
 import com.todayscasting.domain.notification.entity.UserFcmToken;
 import com.todayscasting.domain.notification.repository.UserFcmTokenRepository;
+import com.todayscasting.domain.notification.repository.UserSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import java.util.Map;
 public class PushNotificationServiceImpl implements PushNotificationService {
 
     private final UserFcmTokenRepository userFcmTokenRepository;
+    private final UserSettingsRepository userSettingsRepository;
     private final ObjectProvider<FirebaseMessaging> firebaseMessagingProvider;
 
     @Override
@@ -58,6 +60,10 @@ public class PushNotificationServiceImpl implements PushNotificationService {
     }
 
     private PushNotificationResponse send(Long userId, PushNotificationRequest request, boolean failWhenUnavailable) {
+        if (!isPushEnabled(userId)) {
+            return new PushNotificationResponse(0, 0);
+        }
+
         FirebaseMessaging firebaseMessaging = firebaseMessagingProvider.getIfAvailable();
         if (firebaseMessaging == null) {
             if (!failWhenUnavailable) {
@@ -79,6 +85,12 @@ public class PushNotificationServiceImpl implements PushNotificationService {
         }
 
         return new PushNotificationResponse(successCount, failureCount);
+    }
+
+    private boolean isPushEnabled(Long userId) {
+        return userSettingsRepository.findByUserIdAndDeletedAtIsNull(userId)
+                .map(settings -> settings.isPushEnabled())
+                .orElse(true);
     }
 
     @SuppressWarnings("deprecation")
