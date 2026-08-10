@@ -38,7 +38,7 @@ public class DailyRecordServiceImpl implements DailyRecordService {
             if (dailyRecord.isDeleted()) {
                 // 삭제된 행이면 새로 만들지 않고 되살려서 재사용(restore 메서드 이용)
                 dailyRecord.restore();
-                dailyRecord.update(request.content(), request.mood(), request.moodTags(), request.activityTags());
+                dailyRecord.update(request.content(), request.mood(), request.moodTags(), request.activityTags(), request.status());
                 dailyRecordRepository.saveAndFlush(dailyRecord); // 즉시 DB에 반영해서 updatedAt 최신화
                 return DailyRecordConverter.toResponse(dailyRecord);
             }
@@ -61,7 +61,7 @@ public class DailyRecordServiceImpl implements DailyRecordService {
         DailyRecord dailyRecord = dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(recordId, userId)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
 
-        dailyRecord.update(request.content(), request.mood(), request.moodTags(), request.activityTags());
+        dailyRecord.update(request.content(), request.mood(), request.moodTags(), request.activityTags(), request.status());
         dailyRecordRepository.saveAndFlush(dailyRecord); // 추가: 즉시 DB에 반영해서 updatedAt 최신화
         return DailyRecordConverter.toResponse(dailyRecord);
     }
@@ -85,7 +85,8 @@ public class DailyRecordServiceImpl implements DailyRecordService {
 
     @Override
     public DailyRecordResponse getById(Long userId, Long recordId) {
-        DailyRecord dailyRecord = dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(recordId, userId)
+        DailyRecord dailyRecord = dailyRecordRepository
+                .findByIdAndUserIdAndStatusAndDeletedAtIsNull(recordId, userId, DailyRecord.Status.COMPLETED)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
 
         return DailyRecordConverter.toResponse(dailyRecord);

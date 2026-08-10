@@ -11,6 +11,7 @@ import com.todayscasting.domain.casting.converter.CastingCardConverter;
 import com.todayscasting.domain.casting.dto.request.CastingCardRequestDTO;
 import com.todayscasting.domain.casting.dto.response.CastingCardResponseDTO;
 import com.todayscasting.domain.casting.dto.response.CastingFavoriteCountResponseDTO;
+import com.todayscasting.domain.casting.dto.response.CastingFavoriteResponseDTO;
 import com.todayscasting.domain.casting.entity.CastingCard;
 import com.todayscasting.domain.casting.repository.CastingCardRepository;
 import com.todayscasting.domain.record.entity.DailyRecord;
@@ -173,6 +174,28 @@ public class CastingCardServiceImpl implements CastingCardService {
         long count = castingCardRepository.countFavoritesByUserId(userId);
         return CastingFavoriteCountResponseDTO.builder()
                 .favoriteCount(count)
+                .build();
+    }
+
+    // 마이페이지 "저장한 카드" 목록용. 즐겨찾기한 캐스팅 카드 전체를 화면에 필요한 형태로 변환해 반환 (이슈 #72)
+    @Override
+    @Transactional(readOnly = true)
+    public List<CastingFavoriteResponseDTO> getFavoriteList(Long userId) {
+        return castingCardRepository.findFavoritesByUserId(userId).stream()
+                .map(this::toFavoriteResponseDTO)
+                .toList();
+    }
+
+    private CastingFavoriteResponseDTO toFavoriteResponseDTO(CastingCard castingCard) {
+        return CastingFavoriteResponseDTO.builder()
+                .dailyRecordId(castingCard.getDailyRecordId())
+                .genre(castingCard.getGenre())
+                .roleName(castingCard.getRoleName())
+                .highlight(castingCard.getHighlight())
+                .oneLineComment(castingCard.getOneLineComment())
+                .additionalMood(castingCard.getAdditionalMood())
+                .isFavorite(castingCard.getIsFavorite())
+                .generatedAt(castingCard.getGeneratedAt())
                 .build();
     }
 

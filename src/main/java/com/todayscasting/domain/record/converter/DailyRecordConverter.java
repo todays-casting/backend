@@ -19,7 +19,8 @@ public class DailyRecordConverter {
                 request.content(),
                 request.mood(),
                 request.moodTags(),
-                request.activityTags()
+                request.activityTags(),
+                request.status()
         );
     }
 
@@ -31,6 +32,7 @@ public class DailyRecordConverter {
                 dailyRecord.getMood(),
                 dailyRecord.getMoodTags(),
                 dailyRecord.getActivityTags(),
+                dailyRecord.getStatus(),
                 dailyRecord.getCreatedAt(),
                 dailyRecord.getUpdatedAt()
         );

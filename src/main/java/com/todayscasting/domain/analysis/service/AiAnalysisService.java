@@ -6,10 +6,10 @@ import com.todayscasting.domain.analysis.dto.response.AiAnalysisStatusResponseDT
 
 public interface AiAnalysisService {
 
-    AiAnalysisResponseDTO requestAnalysis(AiAnalysisRequestDTO request);
+    AiAnalysisResponseDTO requestAnalysis(Long userId, AiAnalysisRequestDTO request);
 
-    AiAnalysisResponseDTO getAnalysisResult(Long dailyRecordId);
+    AiAnalysisResponseDTO getAnalysisResult(Long userId, Long dailyRecordId);
 
-    AiAnalysisStatusResponseDTO getAnalysisStatus(Long dailyRecordId);
+    AiAnalysisStatusResponseDTO getAnalysisStatus(Long userId, Long dailyRecordId);
 
 }

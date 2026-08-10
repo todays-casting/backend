@@ -38,13 +38,15 @@ class HistoryServiceImplTest {
         LocalDate start = LocalDate.of(2025, 5, 1);
         LocalDate end = LocalDate.of(2025, 5, 7);
 
-        DailyRecord recordWithCard = DailyRecord.create(1L, LocalDate.of(2025, 5, 3), "내용1", List.of("GOOD"), List.of(), List.of());
+        DailyRecord recordWithCard = DailyRecord.create(1L, LocalDate.of(2025, 5, 3), "내용1", List.of("GOOD"), List.of(), List.of(), DailyRecord.Status.COMPLETED);
         ReflectionTestUtils.setField(recordWithCard, "id", 10L);
 
-        DailyRecord recordWithoutCard = DailyRecord.create(1L, LocalDate.of(2025, 5, 5), "내용2", List.of("SAD"), List.of(), List.of());
+        DailyRecord recordWithoutCard = DailyRecord.create(1L, LocalDate.of(2025, 5, 5), "내용2", List.of("SAD"), List.of(), List.of(), DailyRecord.Status.COMPLETED);
+
         ReflectionTestUtils.setField(recordWithoutCard, "id", 20L);
 
-        when(dailyRecordRepository.findByUserIdAndRecordDateBetweenAndDeletedAtIsNullOrderByRecordDateAsc(1L, start, end))
+        when(dailyRecordRepository.findByUserIdAndRecordDateBetweenAndStatusAndDeletedAtIsNullOrderByRecordDateAsc(
+                1L, start, end, DailyRecord.Status.COMPLETED))
                 .thenReturn(List.of(recordWithCard, recordWithoutCard));
 
         CastingCard card = CastingCard.builder()
@@ -73,7 +75,8 @@ class HistoryServiceImplTest {
         LocalDate start = LocalDate.of(2025, 6, 1);
         LocalDate end = LocalDate.of(2025, 6, 7);
 
-        when(dailyRecordRepository.findByUserIdAndRecordDateBetweenAndDeletedAtIsNullOrderByRecordDateAsc(1L, start, end))
+        when(dailyRecordRepository.findByUserIdAndRecordDateBetweenAndStatusAndDeletedAtIsNullOrderByRecordDateAsc(
+                1L, start, end, DailyRecord.Status.COMPLETED))
                 .thenReturn(List.of());
 
         List<HistoryCardResponse> result = historyService.getHistory(1L, start, end);
