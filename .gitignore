@@ -38,5 +38,10 @@ out/
 
 .env
 
+### Secrets ###
+secrets/
+firebase-service-account.json
+*-firebase-adminsdk-*.json
+
 .DS_Store
 **/.DS_Store
