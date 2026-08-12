@@ -64,4 +64,8 @@ public class Auth {
         this.passwordHash = passwordHash;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void withdraw() {
+        this.deletedAt = LocalDateTime.now();
+    }
 }

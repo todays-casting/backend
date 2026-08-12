@@ -1,5 +1,6 @@
 package com.todayscasting.global.config;
 
+import com.todayscasting.global.security.jwt.TokenBlacklistService;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import com.todayscasting.global.security.jwt.JwtAuthenticationFilter;
 import com.todayscasting.global.security.jwt.JwtProvider;
@@ -20,6 +21,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -33,7 +35,7 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable())
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(new JwtAuthenticationFilter(jwtProvider),
+                .addFilterBefore(new JwtAuthenticationFilter(jwtProvider, tokenBlacklistService),
                         UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

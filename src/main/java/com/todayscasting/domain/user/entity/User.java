@@ -64,4 +64,8 @@ public class User {
         this.gender = gender;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void withdraw() {
+        this.deletedAt = LocalDateTime.now();
+    }
 }
