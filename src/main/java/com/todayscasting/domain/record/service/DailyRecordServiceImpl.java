@@ -1,5 +1,11 @@
 package com.todayscasting.domain.record.service;
 
+import com.todayscasting.domain.analysis.entity.AiAnalysisLog;
+import com.todayscasting.domain.analysis.entity.AnalysisStatus;
+import com.todayscasting.domain.analysis.repository.AiAnalysisLogRepository;
+import com.todayscasting.domain.casting.repository.CastingCardRepository;
+import com.todayscasting.domain.record.dto.response.TodayScreen;
+import com.todayscasting.domain.record.dto.response.TodayStatusResponse;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import com.todayscasting.common.code.status.ErrorStatus;
@@ -27,6 +33,8 @@ public class DailyRecordServiceImpl implements DailyRecordService {
 
     private final DailyRecordRepository dailyRecordRepository;
     private final ObjectMapper objectMapper;
+    private final AiAnalysisLogRepository aiAnalysisLogRepository;
+    private final CastingCardRepository castingCardRepository;
 
     @Override
     @Transactional
@@ -129,5 +137,29 @@ public class DailyRecordServiceImpl implements DailyRecordService {
         } catch (JacksonException e) {
             throw new GeneralException(ErrorStatus.INTERNAL_SERVER_ERROR, e);
         }
+    }
+
+    @Override
+    public TodayStatusResponse getTodayStatus(Long userId) {
+        DailyRecord record = dailyRecordRepository
+                .findByUserIdAndRecordDateAndDeletedAtIsNull(userId, LocalDate.now())
+                .orElse(null);
+
+        if (record == null || record.getStatus() == DailyRecord.Status.DRAFT) {
+            Long recordId = record != null ? record.getId() : null;
+            return new TodayStatusResponse(TodayScreen.INCOMPLETE, recordId);
+        }
+
+        AiAnalysisLog analysisLog = aiAnalysisLogRepository.findByDailyRecordId(record.getId()).orElse(null);
+        if (analysisLog == null || analysisLog.getStatus() == AnalysisStatus.PENDING) {
+            return new TodayStatusResponse(TodayScreen.WAITING, record.getId());
+        }
+        if (analysisLog.getStatus() == AnalysisStatus.FAILED) {
+            return new TodayStatusResponse(TodayScreen.FAILED, record.getId());
+        }
+
+        boolean hasCastingCard = castingCardRepository.findByDailyRecordId(record.getId()).isPresent();
+        TodayScreen screen = hasCastingCard ? TodayScreen.RESULT : TodayScreen.WAITING;
+        return new TodayStatusResponse(screen, record.getId());
     }
 }

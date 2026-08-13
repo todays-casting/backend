@@ -2,10 +2,16 @@ package com.todayscasting.domain.record.service;
 
 import com.todayscasting.common.code.status.ErrorStatus;
 import com.todayscasting.common.exception.GeneralException;
+import com.todayscasting.domain.analysis.entity.AiAnalysisLog;
+import com.todayscasting.domain.analysis.repository.AiAnalysisLogRepository;
+import com.todayscasting.domain.casting.entity.CastingCard;
+import com.todayscasting.domain.casting.repository.CastingCardRepository;
 import com.todayscasting.domain.record.converter.DailyRecordConverter;
 import com.todayscasting.domain.record.dto.request.DailyRecordCreateRequest;
 import com.todayscasting.domain.record.dto.request.DailyRecordUpdateRequest;
 import com.todayscasting.domain.record.dto.response.DailyRecordResponse;
+import com.todayscasting.domain.record.dto.response.TodayScreen;
+import com.todayscasting.domain.record.dto.response.TodayStatusResponse;
 import com.todayscasting.domain.record.entity.DailyRecord;
 import com.todayscasting.domain.record.repository.DailyRecordRepository;
 import org.junit.jupiter.api.Test;
@@ -21,6 +27,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.when;
 
@@ -32,6 +39,12 @@ class DailyRecordServiceImplTest {
 
     @InjectMocks
     private DailyRecordServiceImpl dailyRecordService;
+
+    @Mock
+    private AiAnalysisLogRepository aiAnalysisLogRepository;
+
+    @Mock
+    private CastingCardRepository castingCardRepository;
 
     @Test
     void createsDailyRecord() {
@@ -158,5 +171,104 @@ class DailyRecordServiceImplTest {
 
         assertThatThrownBy(() -> dailyRecordService.getById(1L, 999L))
                 .isInstanceOf(GeneralException.class);
+    }
+
+    @Test
+    // 오늘 기록이 아예 없을 때 INCOMPLETE  + recordId:null 확인
+    void returnsIncompleteWhenNoRecordToday() {
+        when(dailyRecordRepository.findByUserIdAndRecordDateAndDeletedAtIsNull(eq(1L), any(LocalDate.class)))
+                .thenReturn(Optional.empty());
+
+        TodayStatusResponse response = dailyRecordService.getTodayStatus(1L);
+
+        assertThat(response.screen()).isEqualTo(TodayScreen.INCOMPLETE);
+        assertThat(response.recordId()).isNull();
+    }
+
+    @Test
+    // 기록이 DRAFT 상태일 때 INCOMPLETE 반환 확인
+    void returnsIncompleteWhenRecordIsDraft() {
+        DailyRecord record = DailyRecord.create(1L, LocalDate.now(), "쓰다 만 기록", List.of(), List.of(), List.of(), DailyRecord.Status.DRAFT);
+        when(dailyRecordRepository.findByUserIdAndRecordDateAndDeletedAtIsNull(eq(1L), any(LocalDate.class)))
+                .thenReturn(Optional.of(record));
+
+        TodayStatusResponse response = dailyRecordService.getTodayStatus(1L);
+
+        assertThat(response.screen()).isEqualTo(TodayScreen.INCOMPLETE);
+    }
+
+    @Test
+    // 기록은 COMPLETED인데 분석 요청 자체가 아직 없을 때(AiAnalysisLog 없음) WAITING 반환 확인
+    void returnsWaitingWhenAnalysisNotRequestedYet() {
+        DailyRecord record = DailyRecord.create(1L, LocalDate.now(), "완료된 기록", List.of(), List.of(), List.of(), DailyRecord.Status.COMPLETED);
+        when(dailyRecordRepository.findByUserIdAndRecordDateAndDeletedAtIsNull(eq(1L), any(LocalDate.class)))
+                .thenReturn(Optional.of(record));
+        when(aiAnalysisLogRepository.findByDailyRecordId(any())).thenReturn(Optional.empty());
+
+        TodayStatusResponse response = dailyRecordService.getTodayStatus(1L);
+
+        assertThat(response.screen()).isEqualTo(TodayScreen.WAITING);
+    }
+
+    @Test
+    // 분석이 PENDING 상태일 때 WAITING 반환 확인
+    void returnsWaitingWhenAnalysisPending() {
+        DailyRecord record = DailyRecord.create(1L, LocalDate.now(), "완료된 기록", List.of(), List.of(), List.of(), DailyRecord.Status.COMPLETED);
+        AiAnalysisLog log = AiAnalysisLog.builder().dailyRecordId(1L).provider("OPENAI").model("gpt").prompt("p").build();
+        when(dailyRecordRepository.findByUserIdAndRecordDateAndDeletedAtIsNull(eq(1L), any(LocalDate.class)))
+                .thenReturn(Optional.of(record));
+        when(aiAnalysisLogRepository.findByDailyRecordId(any())).thenReturn(Optional.of(log));
+
+        TodayStatusResponse response = dailyRecordService.getTodayStatus(1L);
+
+        assertThat(response.screen()).isEqualTo(TodayScreen.WAITING);
+    }
+
+    @Test
+    // 분석이 FAILED 상태일 때 FAILED 반환 확인
+    void returnsFailedWhenAnalysisFailed() {
+        DailyRecord record = DailyRecord.create(1L, LocalDate.now(), "완료된 기록", List.of(), List.of(), List.of(), DailyRecord.Status.COMPLETED);
+        AiAnalysisLog log = AiAnalysisLog.builder().dailyRecordId(1L).provider("OPENAI").model("gpt").prompt("p").build();
+        log.markFailed("에러 발생");
+        when(dailyRecordRepository.findByUserIdAndRecordDateAndDeletedAtIsNull(eq(1L), any(LocalDate.class)))
+                .thenReturn(Optional.of(record));
+        when(aiAnalysisLogRepository.findByDailyRecordId(any())).thenReturn(Optional.of(log));
+
+        TodayStatusResponse response = dailyRecordService.getTodayStatus(1L);
+
+        assertThat(response.screen()).isEqualTo(TodayScreen.FAILED);
+    }
+
+    @Test
+    // 분석은 SUCCESS인데 캐스팅 카드가 아직 안 만들어졌을 때 WAITING으로 방어적 처리되는지 확인
+    void returnsWaitingWhenAnalysisSuccessButNoCastingCardYet() {
+        DailyRecord record = DailyRecord.create(1L, LocalDate.now(), "완료된 기록", List.of(), List.of(), List.of(), DailyRecord.Status.COMPLETED);
+        AiAnalysisLog log = AiAnalysisLog.builder().dailyRecordId(1L).provider("OPENAI").model("gpt").prompt("p").build();
+        log.markSuccess("{}");
+        when(dailyRecordRepository.findByUserIdAndRecordDateAndDeletedAtIsNull(eq(1L), any(LocalDate.class)))
+                .thenReturn(Optional.of(record));
+        when(aiAnalysisLogRepository.findByDailyRecordId(any())).thenReturn(Optional.of(log));
+        when(castingCardRepository.findByDailyRecordId(any())).thenReturn(Optional.empty());
+
+        TodayStatusResponse response = dailyRecordService.getTodayStatus(1L);
+
+        assertThat(response.screen()).isEqualTo(TodayScreen.WAITING);
+    }
+
+    @Test
+    // 분석 SUCCESS + 카드 존재까지 확인됐을 때 RESULT 반환 확인
+    void returnsResultWhenAnalysisSuccessAndCastingCardExists() {
+        DailyRecord record = DailyRecord.create(1L, LocalDate.now(), "완료된 기록", List.of(), List.of(), List.of(), DailyRecord.Status.COMPLETED);
+        AiAnalysisLog log = AiAnalysisLog.builder().dailyRecordId(1L).provider("OPENAI").model("gpt").prompt("p").build();
+        log.markSuccess("{}");
+        CastingCard card = CastingCard.builder().dailyRecordId(1L).genre("드라마").roleName("오늘의 주인공").build();
+        when(dailyRecordRepository.findByUserIdAndRecordDateAndDeletedAtIsNull(eq(1L), any(LocalDate.class)))
+                .thenReturn(Optional.of(record));
+        when(aiAnalysisLogRepository.findByDailyRecordId(any())).thenReturn(Optional.of(log));
+        when(castingCardRepository.findByDailyRecordId(any())).thenReturn(Optional.of(card));
+
+        TodayStatusResponse response = dailyRecordService.getTodayStatus(1L);
+
+        assertThat(response.screen()).isEqualTo(TodayScreen.RESULT);
     }
 }
