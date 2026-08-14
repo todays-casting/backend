@@ -1,8 +1,8 @@
 package com.todayscasting.domain.auth.service;
 
 import com.todayscasting.domain.auth.client.KakaoClient;
+import com.todayscasting.domain.auth.dto.KakaoLoginResponse;
 import com.todayscasting.domain.auth.dto.KakaoUserResponse;
-import com.todayscasting.domain.auth.dto.TokenResponse;
 import com.todayscasting.domain.auth.entity.Auth;
 import com.todayscasting.domain.auth.repository.AuthRepository;
 import com.todayscasting.domain.user.entity.User;
@@ -22,9 +22,8 @@ public class KakaoAuthService {
     private final JwtProvider jwtProvider;
 
     @Transactional
-    public TokenResponse kakaoLogin(String kakaoAccessToken) {
+    public KakaoLoginResponse kakaoLogin(String kakaoAccessToken) {
         kakaoClient.validateToken(kakaoAccessToken);
-
         KakaoUserResponse userInfo = kakaoClient.getUserInfo(kakaoAccessToken);
 
         if (userInfo.id() == null
@@ -42,14 +41,19 @@ public class KakaoAuthService {
             throw new RuntimeException("카카오 계정에 이메일 정보가 없습니다.");
         }
 
+        boolean isNewUser = false;
         Auth auth = authRepository.findByProviderAndProviderUserId(Auth.Provider.KAKAO, providerId)
-                .orElseGet(() -> {
-                    User newUser = userRepository.findByEmail(email)
-                            .orElseGet(() -> userRepository.save(new User(email, nickname)));
-                    return authRepository.save(new Auth(newUser, Auth.Provider.KAKAO, null, providerId));
-                });
+                .orElse(null);
+
+        if (auth == null) {
+            isNewUser = true;
+            User newUser = userRepository.findByEmail(email)
+                    .orElseGet(() -> userRepository.save(new User(email, nickname)));
+            auth = authRepository.save(new Auth(newUser, Auth.Provider.KAKAO, null, providerId));
+        }
 
         User user = auth.getUser();
-        return new TokenResponse(jwtProvider.generateAccessToken(user.getEmail()));
+        String accessToken = isNewUser ? null : jwtProvider.generateAccessToken(user.getEmail());
+        return new KakaoLoginResponse(accessToken, isNewUser, user.getId());
     }
 }
