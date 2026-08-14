@@ -14,6 +14,7 @@ import com.todayscasting.domain.casting.dto.response.CastingFavoriteCountRespons
 import com.todayscasting.domain.casting.dto.response.CastingFavoriteResponseDTO;
 import com.todayscasting.domain.casting.entity.CastingCard;
 import com.todayscasting.domain.casting.repository.CastingCardRepository;
+import com.todayscasting.domain.casting.support.CastingImageResolver;
 import com.todayscasting.domain.notification.service.PushNotificationService;
 import com.todayscasting.domain.record.entity.DailyRecord;
 import com.todayscasting.domain.record.repository.DailyRecordRepository;
@@ -220,21 +221,24 @@ public class CastingCardServiceImpl implements CastingCardService {
     }
 
     // 마이페이지 "저장한 카드" 목록용. 즐겨찾기한 캐스팅 카드 전체를 화면에 필요한 형태로 변환해 반환 (이슈 #72)
+    // gender는 목록 전체에 대해 동일하므로 스트림 시작 전 한 번만 조회한다. (CodeRabbit 리뷰 반영, 이슈 #89)
     @Override
     @Transactional(readOnly = true)
     public List<CastingFavoriteResponseDTO> getFavoriteList(Long userId) {
+        User.Gender gender = resolveGender(userId);
         return castingCardRepository.findFavoritesByUserId(userId).stream()
-                .map(this::toFavoriteResponseDTO)
+                .map(castingCard -> toFavoriteResponseDTO(castingCard, gender))
                 .toList();
     }
 
-    private CastingFavoriteResponseDTO toFavoriteResponseDTO(CastingCard castingCard) {
+    private CastingFavoriteResponseDTO toFavoriteResponseDTO(CastingCard castingCard, User.Gender gender) {
         return CastingFavoriteResponseDTO.builder()
                 .dailyRecordId(castingCard.getDailyRecordId())
                 .genre(castingCard.getGenre())
                 .roleName(castingCard.getRoleName())
                 .highlight(castingCard.getHighlight())
                 .oneLineComment(castingCard.getOneLineComment())
+                .imageUrl(CastingImageResolver.resolveImageUrl(castingCard.getGenre(), gender))
                 .additionalMood(castingCard.getAdditionalMood())
                 .isFavorite(castingCard.getIsFavorite())
                 .generatedAt(castingCard.getGeneratedAt())
