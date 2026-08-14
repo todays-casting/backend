@@ -32,7 +32,7 @@ public class AuthService {
             throw new GeneralException(AuthErrorStatus.PASSWORD_CONFIRM_MISMATCH);
         }
 
-        if (userRepository.existsByEmail(request.email())) {
+        if (userRepository.existsByEmailAndDeletedAtIsNull(request.email())) {
             throw new GeneralException(AuthErrorStatus.EMAIL_ALREADY_EXISTS);
         }
 
