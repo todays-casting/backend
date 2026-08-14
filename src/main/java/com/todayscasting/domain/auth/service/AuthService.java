@@ -10,11 +10,9 @@ import com.todayscasting.domain.user.repository.UserRepository;
 import com.todayscasting.common.exception.GeneralException;
 import com.todayscasting.global.security.jwt.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.mail.javamail.JavaMailSender;
 import java.security.SecureRandom;
 
 @Service
@@ -25,7 +23,6 @@ public class AuthService {
     private final AuthRepository authRepository;
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
-    private final JavaMailSender mailSender;
     private final TokenBlacklistService tokenBlacklistService;
 
     @Transactional
@@ -72,21 +69,14 @@ public class AuthService {
     }
 
     @Transactional
-    public void resetPassword(PasswordResetRequest request) {
+    public PasswordResetResponse resetPassword(PasswordResetRequest request) {
         User user = userRepository.findByEmailAndDeletedAtIsNull(request.email())
                 .orElseThrow(() -> new GeneralException(AuthErrorStatus.USER_NOT_FOUND));
-
         Auth auth = authRepository.findByUserAndProvider(user, Auth.Provider.LOCAL)
                 .orElseThrow(() -> new GeneralException(AuthErrorStatus.AUTH_NOT_FOUND));
-
         String tempPassword = generateTempPassword();
         auth.updatePasswordHash(passwordEncoder.encode(tempPassword));
-
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(request.email());
-        message.setSubject("[투데이즈캐스팅] 임시 비밀번호 안내");
-        message.setText("임시 비밀번호: " + tempPassword + "\n로그인 후 비밀번호를 변경해주세요.");
-        mailSender.send(message);
+        return new PasswordResetResponse(tempPassword);
     }
 
     private String generateTempPassword() {

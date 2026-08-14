@@ -39,11 +39,10 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
-    @Operation(summary = "비밀번호 찾기", description = "이메일로 임시 비밀번호를 발송합니다.")
+    @Operation(summary = "비밀번호 찾기", description = "임시 비밀번호를 발급하여 응답으로 반환합니다.")
     @PostMapping("/password/reset")
-    public ResponseEntity<Void> resetPassword(@RequestBody @Valid PasswordResetRequest request) {
-        authService.resetPassword(request);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<PasswordResetResponse> resetPassword(@RequestBody @Valid PasswordResetRequest request) {
+        return ResponseEntity.ok(authService.resetPassword(request));
     }
 
     @Operation(summary = "비밀번호 변경", description = "현재 비밀번호 확인 후 새 비밀번호로 변경합니다. JWT 인증 필요.")
