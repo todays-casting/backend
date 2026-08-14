@@ -17,6 +17,8 @@ import com.todayscasting.domain.casting.repository.CastingCardRepository;
 import com.todayscasting.domain.notification.service.PushNotificationService;
 import com.todayscasting.domain.record.entity.DailyRecord;
 import com.todayscasting.domain.record.repository.DailyRecordRepository;
+import com.todayscasting.domain.user.entity.User;
+import com.todayscasting.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -40,6 +42,7 @@ public class CastingCardServiceImpl implements CastingCardService {
     private final CastingCardRepository castingCardRepository;
     private final AiAnalysisLogRepository aiAnalysisLogRepository;
     private final DailyRecordRepository dailyRecordRepository;
+    private final UserRepository userRepository;
     private final PushNotificationService pushNotificationService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -88,7 +91,7 @@ public class CastingCardServiceImpl implements CastingCardService {
 
         notifyCastingCardReadyAfterCommit(userId, savedCastingCard.getDailyRecordId());
 
-        return CastingCardConverter.toResponseDTO(savedCastingCard);
+        return CastingCardConverter.toResponseDTO(savedCastingCard, resolveGender(userId));
     }
 
     private void notifyCastingCardReadyAfterCommit(Long userId, Long dailyRecordId) {
@@ -119,6 +122,15 @@ public class CastingCardServiceImpl implements CastingCardService {
     private DailyRecord validateOwnership(Long userId, Long dailyRecordId) {
         return dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(dailyRecordId, userId)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
+    }
+
+    // 캐스팅 카드 배경 이미지를 성별에 맞게 고르기 위해, userId로 User를 조회해 gender를 꺼낸다. (이슈 #89)
+    // 회원가입 2단계(성별 입력)를 아직 안 마친 유저는 gender가 null일 수 있으며,
+    // 이 경우 CastingImageResolver가 기본값(여성 이미지)으로 폴백한다.
+    private User.Gender resolveGender(Long userId) {
+        return userRepository.findById(userId)
+                .map(User::getGender)
+                .orElse(null);
     }
 
     private JsonNode parseAnalysisResult(String rawResponse) {
@@ -181,7 +193,7 @@ public class CastingCardServiceImpl implements CastingCardService {
     public CastingCardResponseDTO getCastingCard(Long userId, Long dailyRecordId) {
         validateOwnership(userId, dailyRecordId);
         CastingCard castingCard = findByDailyRecordIdOrThrow(dailyRecordId);
-        return CastingCardConverter.toResponseDTO(castingCard);
+        return CastingCardConverter.toResponseDTO(castingCard, resolveGender(userId));
     }
 
     @Override
@@ -190,7 +202,7 @@ public class CastingCardServiceImpl implements CastingCardService {
         validateOwnership(userId, dailyRecordId);
         CastingCard castingCard = findByDailyRecordIdOrThrow(dailyRecordId);
         castingCard.toggleFavorite();
-        return CastingCardConverter.toResponseDTO(castingCard);
+        return CastingCardConverter.toResponseDTO(castingCard, resolveGender(userId));
     }
 
     private CastingCard findByDailyRecordIdOrThrow(Long dailyRecordId) {
