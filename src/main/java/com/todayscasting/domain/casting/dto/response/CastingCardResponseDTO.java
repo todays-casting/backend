@@ -13,6 +13,7 @@ public class CastingCardResponseDTO {
     private Long id;
     private Long dailyRecordId;
     private Long castingImageId;
+    private String imageUrl;
     private String genre;
     private String roleName;
     private String highlight;

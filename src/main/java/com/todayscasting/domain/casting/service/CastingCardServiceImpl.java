@@ -14,9 +14,12 @@ import com.todayscasting.domain.casting.dto.response.CastingFavoriteCountRespons
 import com.todayscasting.domain.casting.dto.response.CastingFavoriteResponseDTO;
 import com.todayscasting.domain.casting.entity.CastingCard;
 import com.todayscasting.domain.casting.repository.CastingCardRepository;
+import com.todayscasting.domain.casting.support.CastingImageResolver;
 import com.todayscasting.domain.notification.service.PushNotificationService;
 import com.todayscasting.domain.record.entity.DailyRecord;
 import com.todayscasting.domain.record.repository.DailyRecordRepository;
+import com.todayscasting.domain.user.entity.User;
+import com.todayscasting.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -40,6 +43,7 @@ public class CastingCardServiceImpl implements CastingCardService {
     private final CastingCardRepository castingCardRepository;
     private final AiAnalysisLogRepository aiAnalysisLogRepository;
     private final DailyRecordRepository dailyRecordRepository;
+    private final UserRepository userRepository;
     private final PushNotificationService pushNotificationService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -88,7 +92,7 @@ public class CastingCardServiceImpl implements CastingCardService {
 
         notifyCastingCardReadyAfterCommit(userId, savedCastingCard.getDailyRecordId());
 
-        return CastingCardConverter.toResponseDTO(savedCastingCard);
+        return CastingCardConverter.toResponseDTO(savedCastingCard, resolveGender(userId));
     }
 
     private void notifyCastingCardReadyAfterCommit(Long userId, Long dailyRecordId) {
@@ -119,6 +123,15 @@ public class CastingCardServiceImpl implements CastingCardService {
     private DailyRecord validateOwnership(Long userId, Long dailyRecordId) {
         return dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(dailyRecordId, userId)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
+    }
+
+    // 캐스팅 카드 배경 이미지를 성별에 맞게 고르기 위해, userId로 User를 조회해 gender를 꺼낸다. (이슈 #89)
+    // 회원가입 2단계(성별 입력)를 아직 안 마친 유저는 gender가 null일 수 있으며,
+    // 이 경우 CastingImageResolver가 기본값(여성 이미지)으로 폴백한다.
+    private User.Gender resolveGender(Long userId) {
+        return userRepository.findById(userId)
+                .map(User::getGender)
+                .orElse(null);
     }
 
     private JsonNode parseAnalysisResult(String rawResponse) {
@@ -181,7 +194,7 @@ public class CastingCardServiceImpl implements CastingCardService {
     public CastingCardResponseDTO getCastingCard(Long userId, Long dailyRecordId) {
         validateOwnership(userId, dailyRecordId);
         CastingCard castingCard = findByDailyRecordIdOrThrow(dailyRecordId);
-        return CastingCardConverter.toResponseDTO(castingCard);
+        return CastingCardConverter.toResponseDTO(castingCard, resolveGender(userId));
     }
 
     @Override
@@ -190,7 +203,7 @@ public class CastingCardServiceImpl implements CastingCardService {
         validateOwnership(userId, dailyRecordId);
         CastingCard castingCard = findByDailyRecordIdOrThrow(dailyRecordId);
         castingCard.toggleFavorite();
-        return CastingCardConverter.toResponseDTO(castingCard);
+        return CastingCardConverter.toResponseDTO(castingCard, resolveGender(userId));
     }
 
     private CastingCard findByDailyRecordIdOrThrow(Long dailyRecordId) {
@@ -208,21 +221,24 @@ public class CastingCardServiceImpl implements CastingCardService {
     }
 
     // 마이페이지 "저장한 카드" 목록용. 즐겨찾기한 캐스팅 카드 전체를 화면에 필요한 형태로 변환해 반환 (이슈 #72)
+    // gender는 목록 전체에 대해 동일하므로 스트림 시작 전 한 번만 조회한다. (CodeRabbit 리뷰 반영, 이슈 #89)
     @Override
     @Transactional(readOnly = true)
     public List<CastingFavoriteResponseDTO> getFavoriteList(Long userId) {
+        User.Gender gender = resolveGender(userId);
         return castingCardRepository.findFavoritesByUserId(userId).stream()
-                .map(this::toFavoriteResponseDTO)
+                .map(castingCard -> toFavoriteResponseDTO(castingCard, gender))
                 .toList();
     }
 
-    private CastingFavoriteResponseDTO toFavoriteResponseDTO(CastingCard castingCard) {
+    private CastingFavoriteResponseDTO toFavoriteResponseDTO(CastingCard castingCard, User.Gender gender) {
         return CastingFavoriteResponseDTO.builder()
                 .dailyRecordId(castingCard.getDailyRecordId())
                 .genre(castingCard.getGenre())
                 .roleName(castingCard.getRoleName())
                 .highlight(castingCard.getHighlight())
                 .oneLineComment(castingCard.getOneLineComment())
+                .imageUrl(CastingImageResolver.resolveImageUrl(castingCard.getGenre(), gender))
                 .additionalMood(castingCard.getAdditionalMood())
                 .isFavorite(castingCard.getIsFavorite())
                 .generatedAt(castingCard.getGeneratedAt())
