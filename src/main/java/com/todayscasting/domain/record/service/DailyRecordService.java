@@ -3,6 +3,7 @@ package com.todayscasting.domain.record.service;
 import com.todayscasting.domain.record.dto.request.DailyRecordCreateRequest;
 import com.todayscasting.domain.record.dto.request.DailyRecordUpdateRequest;
 import com.todayscasting.domain.record.dto.response.DailyRecordResponse;
+import com.todayscasting.domain.record.dto.response.TodayStatusResponse;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -20,4 +21,6 @@ public interface DailyRecordService {
     List<DailyRecordResponse> getByTags(Long userId, List<String> mood, String moodTag, List<String> activityTag);
 
     DailyRecordResponse getById(Long userId, Long recordId);
+
+    TodayStatusResponse getTodayStatus(Long userId);
 }

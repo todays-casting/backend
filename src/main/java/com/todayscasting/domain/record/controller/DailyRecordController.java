@@ -5,6 +5,7 @@ import com.todayscasting.common.response.ApiResponse;
 import com.todayscasting.domain.record.dto.request.DailyRecordCreateRequest;
 import com.todayscasting.domain.record.dto.request.DailyRecordUpdateRequest;
 import com.todayscasting.domain.record.dto.response.DailyRecordResponse;
+import com.todayscasting.domain.record.dto.response.TodayStatusResponse;
 import com.todayscasting.domain.record.service.DailyRecordService;
 import com.todayscasting.domain.record.support.AuthenticatedUserResolver;
 import io.swagger.v3.oas.annotations.Operation;
@@ -94,6 +95,16 @@ public class DailyRecordController {
     ) {
         Long userId = authenticatedUserResolver.resolveUserId(email);
         List<DailyRecordResponse> response = dailyRecordService.getByTags(userId, mood, moodTag, activityTag);
+        return ApiResponse.onSuccess(response);
+    }
+
+    @Operation(summary = "오늘의 기록 상태 조회", description = "캘린더 탭 '오늘의 기록 보기/작성하기' 버튼에서 사용. 오늘 기록 유무, 분석 진행상태, 캐스팅 카드 존재 여부를 종합해서 어느 화면으로 이동해야 하는지(screen)와 recordId를 함께 반환합니다.")
+    @GetMapping("/today-status")
+    public ApiResponse<TodayStatusResponse> getTodayStatus(
+            @AuthenticationPrincipal String email
+    ) {
+        Long userId = authenticatedUserResolver.resolveUserId(email);
+        TodayStatusResponse response = dailyRecordService.getTodayStatus(userId);
         return ApiResponse.onSuccess(response);
     }
 }
