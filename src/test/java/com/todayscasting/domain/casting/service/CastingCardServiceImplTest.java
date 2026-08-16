@@ -9,6 +9,7 @@ import com.todayscasting.domain.casting.repository.CastingCardRepository;
 import com.todayscasting.domain.notification.service.PushNotificationService;
 import com.todayscasting.domain.record.entity.DailyRecord;
 import com.todayscasting.domain.record.repository.DailyRecordRepository;
+import com.todayscasting.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +40,9 @@ class CastingCardServiceImplTest {
     private DailyRecordRepository dailyRecordRepository;
 
     @Mock
+    private UserRepository userRepository;
+
+    @Mock
     private PushNotificationService pushNotificationService;
 
     private CastingCardServiceImpl castingCardService;
@@ -49,6 +53,7 @@ class CastingCardServiceImplTest {
                 castingCardRepository,
                 aiAnalysisLogRepository,
                 dailyRecordRepository,
+                userRepository,
                 pushNotificationService
         );
     }
