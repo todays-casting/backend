@@ -3,6 +3,7 @@ package com.todayscasting.domain.notification.service;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.todayscasting.domain.notification.dto.response.PushNotificationResponse;
 import com.todayscasting.domain.notification.entity.UserSettings;
+import com.todayscasting.domain.notification.repository.NotificationRepository;
 import com.todayscasting.domain.notification.repository.UserFcmTokenRepository;
 import com.todayscasting.domain.notification.repository.UserSettingsRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +34,9 @@ class PushNotificationServiceImplTest {
     private UserSettingsRepository userSettingsRepository;
 
     @Mock
+    private NotificationRepository notificationRepository;
+
+    @Mock
     private ObjectProvider<FirebaseMessaging> firebaseMessagingProvider;
 
     @Mock
@@ -47,6 +51,7 @@ class PushNotificationServiceImplTest {
         pushNotificationService = new PushNotificationServiceImpl(
                 userFcmTokenRepository,
                 userSettingsRepository,
+                notificationRepository,
                 firebaseMessagingProvider,
                 transactionManager
         );

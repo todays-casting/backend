@@ -3,12 +3,17 @@ package com.todayscasting.domain.notification.service;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.todayscasting.common.code.status.ErrorStatus;
 import com.todayscasting.common.exception.GeneralException;
 import com.todayscasting.domain.notification.dto.request.PushNotificationRequest;
 import com.todayscasting.domain.notification.dto.response.PushNotificationResponse;
+import com.todayscasting.domain.notification.entity.Notification;
 import com.todayscasting.domain.notification.entity.NotificationType;
 import com.todayscasting.domain.notification.entity.UserFcmToken;
+import com.todayscasting.domain.notification.repository.NotificationRepository;
 import com.todayscasting.domain.notification.repository.UserFcmTokenRepository;
 import com.todayscasting.domain.notification.repository.UserSettingsRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +29,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PushNotificationServiceImpl implements PushNotificationService {
 
+    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder().build();
+
     private final UserFcmTokenRepository userFcmTokenRepository;
     private final UserSettingsRepository userSettingsRepository;
+    private final NotificationRepository notificationRepository;
     private final ObjectProvider<FirebaseMessaging> firebaseMessagingProvider;
     private final PlatformTransactionManager transactionManager;
 
@@ -46,6 +54,7 @@ public class PushNotificationServiceImpl implements PushNotificationService {
                 )
         );
 
+        saveNotification(userId, type, request);
         return send(userId, request, false);
     }
 
@@ -58,7 +67,18 @@ public class PushNotificationServiceImpl implements PushNotificationService {
                 Map.of("type", type.name())
         );
 
+        saveNotification(userId, type, request);
         return send(userId, request, false);
+    }
+
+    private void saveNotification(Long userId, NotificationType type, PushNotificationRequest request) {
+        notificationRepository.save(Notification.create(
+                userId,
+                type,
+                request.title(),
+                request.body(),
+                toJson(request.data())
+        ));
     }
 
     private PushNotificationResponse send(Long userId, PushNotificationRequest request, boolean failWhenUnavailable) {
@@ -126,5 +146,17 @@ public class PushNotificationServiceImpl implements PushNotificationService {
         }
 
         return builder.build();
+    }
+
+    private String toJson(Map<String, String> data) {
+        if (data == null || data.isEmpty()) {
+            return null;
+        }
+
+        try {
+            return OBJECT_MAPPER.writeValueAsString(data);
+        } catch (JsonProcessingException e) {
+            throw new GeneralException(ErrorStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }
