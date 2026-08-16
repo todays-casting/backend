@@ -2,9 +2,6 @@ spring:
   config:
     import: optional:file:.env[.properties]
 
-  application:
-    name: todays-casting-backend
-
   mail:
     host: smtp.gmail.com
     port: 587
@@ -20,6 +17,10 @@ spring:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+
+  application:
+    name: todays-casting-backend
+
   data:
     redis:
       host: ${REDIS_HOST:localhost}

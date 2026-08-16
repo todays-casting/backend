@@ -51,6 +51,7 @@ public class Auth {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
+
     public Auth(User user, Provider provider, String passwordHash, String providerUserId) {
         this.user = user;
         this.provider = provider;
@@ -66,6 +67,10 @@ public class Auth {
     }
 
     public void withdraw() {
+        if (this.providerUserId != null) {
+            this.providerUserId = "deleted_" + this.id + "_" + System.currentTimeMillis();
+        }
         this.deletedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 }
