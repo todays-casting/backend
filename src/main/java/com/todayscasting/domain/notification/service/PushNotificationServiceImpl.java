@@ -54,8 +54,11 @@ public class PushNotificationServiceImpl implements PushNotificationService {
                 )
         );
 
-        saveNotification(userId, type, request);
-        return send(userId, request, false);
+        PushNotificationResponse response = send(userId, request, false);
+        if (response.successCount() > 0) {
+            saveNotification(userId, type, request);
+        }
+        return response;
     }
 
     @Override
@@ -67,8 +70,11 @@ public class PushNotificationServiceImpl implements PushNotificationService {
                 Map.of("type", type.name())
         );
 
-        saveNotification(userId, type, request);
-        return send(userId, request, false);
+        PushNotificationResponse response = send(userId, request, false);
+        if (response.successCount() > 0) {
+            saveNotification(userId, type, request);
+        }
+        return response;
     }
 
     private void saveNotification(Long userId, NotificationType type, PushNotificationRequest request) {
