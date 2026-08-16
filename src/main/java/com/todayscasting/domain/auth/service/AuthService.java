@@ -16,6 +16,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -62,12 +64,13 @@ public class AuthService {
         return new TokenResponse(jwtProvider.generateAccessToken(request.email()));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public void requestPasswordReset(PasswordResetRequestRequest request) {
-        User user = userRepository.findByEmailAndDeletedAtIsNull(request.email())
-                .orElseThrow(() -> new GeneralException(AuthErrorStatus.USER_NOT_FOUND));
-        authRepository.findByUserAndProvider(user, Auth.Provider.LOCAL)
-                .orElseThrow(() -> new GeneralException(AuthErrorStatus.AUTH_NOT_FOUND));
+        Optional<User> userOpt = userRepository.findByEmailAndDeletedAtIsNull(request.email());
+        if (userOpt.isEmpty()) return;
+
+        Optional<Auth> authOpt = authRepository.findByUserAndProvider(userOpt.get(), Auth.Provider.LOCAL);
+        if (authOpt.isEmpty()) return;
 
         String otp = passwordResetOtpService.generateAndStore(request.email());
 
@@ -80,7 +83,7 @@ public class AuthService {
 
     @Transactional
     public void confirmPasswordReset(PasswordResetConfirmRequest request) {
-        if (!passwordResetOtpService.verify(request.email(), request.otp())) {
+        if (!passwordResetOtpService.verifyAndInvalidate(request.email(), request.otp())) {
             throw new GeneralException(AuthErrorStatus.INVALID_OTP);
         }
         User user = userRepository.findByEmailAndDeletedAtIsNull(request.email())
@@ -89,7 +92,6 @@ public class AuthService {
                 .orElseThrow(() -> new GeneralException(AuthErrorStatus.AUTH_NOT_FOUND));
 
         auth.updatePasswordHash(passwordEncoder.encode(request.newPassword()));
-        passwordResetOtpService.invalidate(request.email());
     }
 
     @Transactional

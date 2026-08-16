@@ -22,13 +22,10 @@ public class PasswordResetOtpService {
         return otp;
     }
 
-    public boolean verify(String email, String otp) {
-        String stored = redisTemplate.opsForValue().get(PREFIX + email);
+    public boolean verifyAndInvalidate(String email, String otp) {
+        String key = PREFIX + email;
+        String stored = redisTemplate.opsForValue().getAndDelete(key);
         return otp.equals(stored);
-    }
-
-    public void invalidate(String email) {
-        redisTemplate.delete(PREFIX + email);
     }
 
     private String generateOtp() {
