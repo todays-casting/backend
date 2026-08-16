@@ -41,18 +41,17 @@ public class KakaoAuthService {
             throw new RuntimeException("카카오 계정에 이메일 정보가 없습니다.");
         }
 
-        boolean isNewUser = false;
         Auth auth = authRepository.findByProviderAndProviderUserId(Auth.Provider.KAKAO, providerId)
                 .orElse(null);
 
         if (auth == null) {
-            isNewUser = true;
-            User newUser = userRepository.findByEmail(email)
+            User newUser = userRepository.findByEmailAndDeletedAtIsNull(email)
                     .orElseGet(() -> userRepository.save(new User(email, nickname)));
             auth = authRepository.save(new Auth(newUser, Auth.Provider.KAKAO, null, providerId));
         }
 
         User user = auth.getUser();
+        boolean isNewUser = user.getAge() == null;
         String accessToken = isNewUser ? null : jwtProvider.generateAccessToken(user.getEmail());
         return new KakaoLoginResponse(accessToken, isNewUser, user.getId());
     }

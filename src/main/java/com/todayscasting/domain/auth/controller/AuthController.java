@@ -39,10 +39,20 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
-    @Operation(summary = "비밀번호 찾기", description = "임시 비밀번호를 발급하여 응답으로 반환합니다.")
-    @PostMapping("/password/reset")
-    public ResponseEntity<PasswordResetResponse> resetPassword(@RequestBody @Valid PasswordResetRequest request) {
-        return ResponseEntity.ok(authService.resetPassword(request));
+    @Operation(summary = "비밀번호 재설정 요청", description = "이메일로 인증코드를 발송합니다.")
+    @PostMapping("/password/reset/request")
+    public ResponseEntity<Void> requestPasswordReset(
+            @RequestBody @Valid PasswordResetRequestRequest request) {
+        authService.requestPasswordReset(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "비밀번호 재설정 확인", description = "인증코드 검증 후 새 비밀번호로 변경합니다.")
+    @PostMapping("/password/reset/confirm")
+    public ResponseEntity<Void> confirmPasswordReset(
+            @RequestBody @Valid PasswordResetConfirmRequest request) {
+        authService.confirmPasswordReset(request);
+        return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "비밀번호 변경", description = "현재 비밀번호 확인 후 새 비밀번호로 변경합니다. JWT 인증 필요.")
