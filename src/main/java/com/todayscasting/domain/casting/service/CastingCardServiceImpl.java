@@ -247,6 +247,9 @@ public class CastingCardServiceImpl implements CastingCardService {
 
     @Override
     public String getImageUrl(String imageKey) {
+        if (imageKey == null || !imageKey.startsWith("casting-cards/generated/")) {
+            throw new GeneralException(ErrorStatus.INVALID_REQUEST);
+        }
         return s3Service.createPresignedGetUrl(imageKey, GENERATED_IMAGE_URL_DURATION);
     }
 
