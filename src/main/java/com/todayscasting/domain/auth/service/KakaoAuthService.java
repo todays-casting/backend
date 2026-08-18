@@ -33,20 +33,20 @@ public class KakaoAuthService {
             throw new RuntimeException("카카오 사용자 정보를 가져올 수 없습니다.");
         }
 
-        String email = userInfo.kakaoAccount().email();
         String nickname = userInfo.kakaoAccount().profile().nickname();
         String providerId = String.valueOf(userInfo.id());
+        String email = userInfo.kakaoAccount().email();
 
-        if (email == null || email.isBlank()) {
-            throw new RuntimeException("카카오 계정에 이메일 정보가 없습니다.");
-        }
+        final String resolvedEmail = (email == null || email.isBlank())
+                ? "kakao_" + providerId + "@kakao.com"
+                : email;
 
         Auth auth = authRepository.findByProviderAndProviderUserId(Auth.Provider.KAKAO, providerId)
                 .orElse(null);
 
         if (auth == null) {
-            User newUser = userRepository.findByEmailAndDeletedAtIsNull(email)
-                    .orElseGet(() -> userRepository.save(new User(email, nickname)));
+            User newUser = userRepository.findByEmailAndDeletedAtIsNull(resolvedEmail)
+                    .orElseGet(() -> userRepository.save(new User(resolvedEmail, nickname)));
             auth = authRepository.save(new Auth(newUser, Auth.Provider.KAKAO, null, providerId));
         }
 
