@@ -42,6 +42,7 @@ public class CastingCardServiceImpl implements CastingCardService {
 
     private static final int MAX_ADDITIONAL_MOOD_COUNT = 2;
     private static final Duration GENERATED_IMAGE_URL_DURATION = Duration.ofHours(24);
+    private static final String GENERATED_IMAGE_KEY_PREFIX = "casting-images/generated/";
 
     private final CastingCardRepository castingCardRepository;
     private final AiAnalysisLogRepository aiAnalysisLogRepository;
@@ -247,7 +248,7 @@ public class CastingCardServiceImpl implements CastingCardService {
 
     @Override
     public String getImageUrl(String imageKey) {
-        if (imageKey == null || !imageKey.startsWith("casting-cards/generated/")) {
+        if (imageKey == null || !imageKey.startsWith(GENERATED_IMAGE_KEY_PREFIX)) {
             throw new GeneralException(ErrorStatus.INVALID_REQUEST);
         }
         return s3Service.createPresignedGetUrl(imageKey, GENERATED_IMAGE_URL_DURATION);
