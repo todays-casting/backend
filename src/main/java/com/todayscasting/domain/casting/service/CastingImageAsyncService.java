@@ -18,6 +18,8 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class CastingImageAsyncService {
 
+    private static final String GENERATED_IMAGE_DIRECTORY = "casting-images/generated";
+
     private final ImageGenerationService imageGenerationService;
     private final S3Service s3Service;
     private final CastingCardRepository castingCardRepository;
@@ -28,7 +30,7 @@ public class CastingImageAsyncService {
             String prompt = imageGenerationService.buildPrompt(genre, gender, highlight);
             byte[] imageBytes = imageGenerationService.generateImage(prompt, gender);
 
-            String key = s3Service.uploadBytes(imageBytes, "casting-cards/generated", "image/png");
+            String key = s3Service.uploadBytes(imageBytes, GENERATED_IMAGE_DIRECTORY, "image/png");
 
             castingCardRepository.findById(castingCardId).ifPresentOrElse(
                     card -> {
