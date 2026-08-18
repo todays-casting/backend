@@ -10,6 +10,10 @@ import java.util.List;
 @Builder
 public class CastingCardResponseDTO {
 
+    private CastingCardStatus status;
+    private Boolean hasCastingCard;
+    private Boolean hasGeneratedImage;
+
     private Long id;
     private Long dailyRecordId;
     private Long castingImageId;
