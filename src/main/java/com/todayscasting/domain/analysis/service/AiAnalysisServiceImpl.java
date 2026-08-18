@@ -47,7 +47,7 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
 
         if (rawResponse != null) {
             if (isUnwrittenResult(rawResponse)) {
-                // AI 응답 자체는 성공했지만, 하루 기록이 비어있거나 무의미해서 분석할 내용이 없었던 경우.
+                // AI 응답 자체는 성공했지만, 하루 기록이 비어있거나 인식할 수 없어서 분석할 내용이 없었던 경우.
                 // SUCCESS로 저장하면 이후 사용자가 기록을 채워 넣어도 재요청이 막히므로,
                 // 의도적으로 FAILED 처리해서 기존 재시도 로직(FAILED일 때만 재시도 허용)을 그대로 재사용
                 markFailed(savedLog.getId(), "하루 기록이 비어있거나 인식할 수 없어 분석하지 못했습니다. 기록을 다시 작성한 후 재시도해주세요.");
@@ -102,9 +102,11 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         aiAnalysisLogRepository.save(log);
     }
 
-    // 프롬프트의 "특별 규칙"에서 미작성/무의미 기록일 때 roleName을 항상 "하루 기록 미작성"으로
+    // 프롬프트의 "특별 규칙"에서 완전히 빈 기록일 때만 roleName을 항상 "하루 기록 미작성"으로
     // 고정 응답하도록 못박아뒀으므로, roleName 필드값이 정확히 일치하는지로 미작성 케이스를 판별.
     // (전체 텍스트에 이 문구가 우연히 포함될 수 있어 단순 contains()는 오탐 위험이 있음 - CodeRabbit 지적 반영)
+    // 무작위 문자열(예: "ㅁㄴㅇㄹ!$ㅁㄴㄸ")은 이슈 #93 이후 더 이상 미작성으로 취급하지 않고
+    // "혼란스러운 분위기"로 정상 분석되므로, 이 판별 대상에서 제외된다.
     private boolean isUnwrittenResult(String rawResponse) {
         if (rawResponse == null) {
             return false;
@@ -287,11 +289,41 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         promptBuilder.append("highlight, oneLineComment, scenePhrase, commentPhrase, characterPhrase는 ");
         promptBuilder.append("구체적인 장면을 지어내지 말고, 선택된 감정/키워드만으로 담백하게 표현하세요.\n");
 
-        // 미작성/무의미 기록 처리 규칙: AI가 창의적으로 지어내지 않고 고정값 그대로 응답하게 함
-        promptBuilder.append("특별 규칙 B: 위 규칙 A에 해당하지 않으면서(즉 감정/키워드/활동도 전혀 선택되지 않았으면서), ");
-        promptBuilder.append("동시에 하루 기록 내용이 비어있거나, ");
-        promptBuilder.append("사람이 읽었을 때 실제 의미를 파악할 수 없는 무작위 문자 나열이라면 ");
-        promptBuilder.append("(예: 단순 반복 'ㅇㅇ', '...', 'ㅎㅎ', 또는 키보드를 눌러본 듯한 무작위 자음/모음 나열 'ㅁㄴㄱㄷㄴ', 'ㅋㅇㅈㄷ' 등), ");
+        // 무작위 문자열(키보드/자판을 눌러본 흔적) 처리 규칙: 이슈 #93 이후 변경.
+        // 예전에는 이런 입력도 "미작성"으로 취급해 고정값을 응답했지만, 실시간 이미지 생성이
+        // 도입되면서 "입력할 정성은 들였다"는 점을 살려, 정신없고 혼란스러운 정서로 정상 분석하도록 바꿈.
+        // 단, 아무 기준 없이 다 인정하면 짧게 대충 친 것까지 포함될 수 있어 아래 3가지 조건을
+        // 모두 만족할 때만 적용한다 (팀 논의 결과, 2026-08-17):
+        // 1) 8자 이상일 것 (너무 짧은 건 제외)
+        // 2) 같은 글자/기호의 단순 반복이 아닐 것 (예: "ㅁㅁㅁㅁㅁㅁㅁㅁ", "ㅋㅋㅋㅋㅋㅋㅋ" 제외)
+        // 3) 한글 자음/모음만으로 이루어진 것이 아니라, 특수문자·숫자·영문 등이 함께 섞여 있을 것
+        //    (한글 자모만 무작위로 나열된 경우는 여전히 미작성으로 처리)
+        promptBuilder.append("특별 규칙 B: 만약 위 규칙 A에 해당하지 않으면서, 하루 기록 내용이 ");
+        promptBuilder.append("사람이 읽었을 때 실제 의미를 파악할 수 없는 무작위 문자 나열이면서, ");
+        promptBuilder.append("동시에 아래 3가지 조건을 모두 만족한다면 ");
+        promptBuilder.append("(1. 8자 이상일 것, ");
+        promptBuilder.append("2. 같은 글자나 기호가 단순히 반복되는 것이 아닐 것(예: 'ㅁㅁㅁㅁㅁㅁㅁㅁ', 'ㅋㅋㅋㅋㅋㅋㅋ'는 해당 안 됨), ");
+        promptBuilder.append("3. 한글 자음/모음만으로 이루어진 것이 아니라 특수문자, 숫자, 영문 등이 함께 섞여 있을 것 ");
+        promptBuilder.append("(예: 'ㅁㄴㅇㄹ!$ㅁㄴㄸ%$#%3245'는 해당되지만, 'ㅁㄴㅇㄹㅁㄴㅇㄹㅁㄴㅇㄹ'처럼 한글 자모만 나열된 것은 해당 안 됨)), ");
+        promptBuilder.append("이것을 '미작성'으로 단정하지 마세요. 대신 사용자가 정신없고 산만하거나 복잡한 상태에서 ");
+        promptBuilder.append("의미 없이 글자를 눌러본 것으로 해석해서, '혼란스러움', '어수선함', '정신없음' 같은 ");
+        promptBuilder.append("정서를 담아 정상적으로 분석하세요. 절대 구체적인 사건이나 장면, 소리, 장소 등을 지어내지 말고, ");
+        promptBuilder.append("오직 그 혼란스럽고 어수선한 정서만을 담백하게 표현하세요. ");
+        promptBuilder.append("genre는 20개 후보 조합 중 이 혼란스러운 정서에 자연스럽게 어울리는 조합을 고르세요 ");
+        promptBuilder.append("(예: 미스터리, 액션, 코미디 등과의 조합도 가능합니다). ");
+        promptBuilder.append("additionalMood에는 '혼란스러움', '어수선함' 같은 감정을 반영하세요. ");
+        promptBuilder.append("위 3가지 조건을 하나라도 만족하지 못하면(너무 짧거나, 단순 반복이거나, 한글 자모만 있다면) ");
+        promptBuilder.append("아래 특별 규칙 C(미작성 처리)를 대신 따르세요.\n");
+
+        // 완전히 빈 기록 및 그 외 무의미한 텍스트 처리 규칙: AI가 창의적으로 지어내지 않고 고정값 그대로 응답하게 함.
+        // 규칙 B(혼란스러움)의 3가지 조건을 하나라도 만족 못 하면 여기로 떨어진다 - 예를 들어
+        // 너무 짧거나('ㅁㄴ'), 같은 글자 반복이거나('ㅋㅋㅋㅋㅋㅋㅋ'), 한글 자모만 나열된 경우('ㅁㄴㄱㄷㄴ')는
+        // 모두 여기서 처리한다 (이 부분은 이슈 #93 이전부터 있던 원래 미작성 처리 범위와 동일하다).
+        promptBuilder.append("특별 규칙 C: 위 규칙 A, B 어디에도 해당하지 않는 경우, 즉 하루 기록 내용이 ");
+        promptBuilder.append("완전히 비어있거나 공백뿐이거나, 혹은 사람이 읽었을 때 실제 의미를 파악할 수 없는데도 ");
+        promptBuilder.append("위 특별 규칙 B의 3가지 조건을 모두 만족하지는 못하는 경우라면 ");
+        promptBuilder.append("(예: 'ㅁㄴ'처럼 8자 미만인 경우, 'ㅋㅋㅋㅋㅋㅋㅋ'나 'ㅁㅁㅁㅁㅁㅁㅁㅁ'처럼 같은 글자만 반복되는 경우, ");
+        promptBuilder.append("'ㅁㄴㄱㄷㄴㅁㄴㄱㄷㄴ'처럼 한글 자음/모음만 나열되고 특수문자·숫자·영문이 섞여있지 않은 경우), ");
         promptBuilder.append("절대 창의적으로 해석하거나 지어내지 말고, 아래 값 그대로 정직하게 응답해주세요:\n");
         promptBuilder.append("{\n");
         promptBuilder.append("  \"genre\": \"-\",\n");

@@ -19,4 +19,7 @@ public interface CastingCardService {
 
     List<CastingFavoriteResponseDTO> getFavoriteList(Long userId);
 
+    // imageKey(S3 객체 key)를 받아서, 화면에 그리기 직전에 쓸 presigned URL을 새로 발급한다. (이슈 #93)
+    String getImageUrl(String imageKey);
+
 }
