@@ -59,6 +59,24 @@ public class S3Service {
     }
 
     /**
+     * byte[] 데이터를 지정한 디렉터리에 업로드하고 S3 객체 키를 반환합니다.
+     * MultipartFile이 없는 경우(예: 외부 API가 생성한 이미지 바이트를 그대로 저장할 때) 사용합니다. (이슈 #93)
+     */
+    public String uploadBytes(byte[] data, String directory, String contentType) {
+        String key = createObjectKeyForBytes(directory, contentType);
+
+        PutObjectRequest request = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .contentType(contentType)
+                .contentLength((long) data.length)
+                .build();
+
+        s3Client.putObject(request, RequestBody.fromBytes(data));
+        return key;
+    }
+
+    /**
      * S3 객체 키를 기준으로 파일을 삭제합니다.
      */
     public void delete(String key) {
@@ -101,6 +119,15 @@ public class S3Service {
     private String createObjectKey(MultipartFile file, String directory) {
         String filename = Objects.requireNonNullElse(file.getOriginalFilename(), "file");
         String extension = extractExtension(filename);
+        String normalizedDirectory = normalizeDirectory(directory);
+        return normalizedDirectory + "/" + UUID.randomUUID() + extension;
+    }
+
+    /**
+     * byte[] 업로드용 객체 키를 만듭니다. contentType이 image/png일 때만 .png 확장자를 붙입니다.
+     */
+    private String createObjectKeyForBytes(String directory, String contentType) {
+        String extension = "image/png".equals(contentType) ? ".png" : "";
         String normalizedDirectory = normalizeDirectory(directory);
         return normalizedDirectory + "/" + UUID.randomUUID() + extension;
     }
