@@ -6,6 +6,7 @@ import com.todayscasting.domain.casting.dto.request.CastingCardRequestDTO;
 import com.todayscasting.domain.casting.dto.response.CastingCardResponseDTO;
 import com.todayscasting.domain.casting.dto.response.CastingFavoriteCountResponseDTO;
 import com.todayscasting.domain.casting.dto.response.CastingFavoriteResponseDTO;
+import com.todayscasting.domain.casting.dto.response.ImageUrlResponseDTO;
 import com.todayscasting.domain.casting.service.CastingCardService;
 import com.todayscasting.domain.record.support.AuthenticatedUserResolver;
 import io.swagger.v3.oas.annotations.Operation;
@@ -97,6 +98,21 @@ public class CastingCardController {
         Long userId = authenticatedUserResolver.resolveUserId(email);
         List<CastingFavoriteResponseDTO> result = castingCardService.getFavoriteList(userId);
         return ApiResponse.onSuccess(result);
+    }
+
+    @Operation(
+            summary = "실시간 생성 이미지 URL 발급",
+            description = "캐스팅 카드 응답에 담긴 imageKey(S3 객체 key)를 받아서, 화면에 그리기 직전에 쓸 " +
+                    "presigned URL을 새로 발급합니다(유효기간 24시간). imageUrl은 URL을 미리 받아서 오래 " +
+                    "캐싱해두면 유효기간이 지나서 깨질 수 있으므로, 프론트는 실제로 이미지를 보여줄 때마다 " +
+                    "이 API를 새로 호출하는 것을 권장합니다. (이슈 #93)"
+    )
+    @GetMapping("/image-url")
+    public ApiResponse<ImageUrlResponseDTO> getImageUrl(
+            @RequestParam String key
+    ) {
+        String imageUrl = castingCardService.getImageUrl(key);
+        return ApiResponse.onSuccess(ImageUrlResponseDTO.builder().imageUrl(imageUrl).build());
     }
 
 }

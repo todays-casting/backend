@@ -28,6 +28,10 @@ public class CastingCard extends BaseEntity {
     @Column(name = "casting_image_id")
     private Long castingImageId;
 
+    // AI가 실시간으로 생성한 이미지를 S3에 올린 후의 key (이슈 #93)
+    @Column(name = "generated_image_key")
+    private String generatedImageKey;
+
     // title은 확정된 UI(오늘의 캐스팅 결과, 히스토리 조회)에 노출되지 않아
     // 더 이상 AI 분석 시 값을 생성/저장하지 않기로 결정 (2026-08-04) -> nullable로 변경 (V4 마이그레이션)
     @Column(length = 100)
@@ -107,6 +111,10 @@ public class CastingCard extends BaseEntity {
 
     public void linkCastingImage(Long castingImageId) {
         this.castingImageId = castingImageId;
+    }
+
+    public void updateGeneratedImageKey(String generatedImageKey) {
+        this.generatedImageKey = generatedImageKey;
     }
 
 }
