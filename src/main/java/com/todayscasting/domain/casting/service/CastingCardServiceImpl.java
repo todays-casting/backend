@@ -18,6 +18,7 @@ import com.todayscasting.domain.casting.support.CastingImageResolver;
 import com.todayscasting.domain.notification.service.PushNotificationService;
 import com.todayscasting.domain.record.entity.DailyRecord;
 import com.todayscasting.domain.record.repository.DailyRecordRepository;
+import com.todayscasting.domain.s3.service.S3Service;
 import com.todayscasting.domain.user.entity.User;
 import com.todayscasting.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,7 @@ public class CastingCardServiceImpl implements CastingCardService {
     private final DailyRecordRepository dailyRecordRepository;
     private final UserRepository userRepository;
     private final PushNotificationService pushNotificationService;
+    private final S3Service s3Service;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -92,7 +94,7 @@ public class CastingCardServiceImpl implements CastingCardService {
 
         notifyCastingCardReadyAfterCommit(userId, savedCastingCard.getDailyRecordId());
 
-        return CastingCardConverter.toResponseDTO(savedCastingCard, resolveGender(userId));
+        return toResponseDTO(savedCastingCard, resolveGender(userId));
     }
 
     private void notifyCastingCardReadyAfterCommit(Long userId, Long dailyRecordId) {
@@ -194,7 +196,7 @@ public class CastingCardServiceImpl implements CastingCardService {
     public CastingCardResponseDTO getCastingCard(Long userId, Long dailyRecordId) {
         validateOwnership(userId, dailyRecordId);
         CastingCard castingCard = findByDailyRecordIdOrThrow(dailyRecordId);
-        return CastingCardConverter.toResponseDTO(castingCard, resolveGender(userId));
+        return toResponseDTO(castingCard, resolveGender(userId));
     }
 
     @Override
@@ -203,7 +205,7 @@ public class CastingCardServiceImpl implements CastingCardService {
         validateOwnership(userId, dailyRecordId);
         CastingCard castingCard = findByDailyRecordIdOrThrow(dailyRecordId);
         castingCard.toggleFavorite();
-        return CastingCardConverter.toResponseDTO(castingCard, resolveGender(userId));
+        return toResponseDTO(castingCard, resolveGender(userId));
     }
 
     private CastingCard findByDailyRecordIdOrThrow(Long dailyRecordId) {
@@ -238,11 +240,20 @@ public class CastingCardServiceImpl implements CastingCardService {
                 .roleName(castingCard.getRoleName())
                 .highlight(castingCard.getHighlight())
                 .oneLineComment(castingCard.getOneLineComment())
-                .imageUrl(CastingImageResolver.resolveImageUrl(castingCard.getGenre(), gender))
+                .imageUrl(resolveImageUrl(castingCard, gender))
                 .additionalMood(castingCard.getAdditionalMood())
                 .isFavorite(castingCard.getIsFavorite())
                 .generatedAt(castingCard.getGeneratedAt())
                 .build();
+    }
+
+    private CastingCardResponseDTO toResponseDTO(CastingCard castingCard, User.Gender gender) {
+        return CastingCardConverter.toResponseDTO(castingCard, resolveImageUrl(castingCard, gender));
+    }
+
+    private String resolveImageUrl(CastingCard castingCard, User.Gender gender) {
+        String imageKey = CastingImageResolver.resolveImageKey(castingCard.getGenre(), gender);
+        return s3Service.createPublicGetUrl(imageKey);
     }
 
 }

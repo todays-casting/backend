@@ -23,15 +23,18 @@ public class S3Service {
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
     private final String bucket;
+    private final String region;
 
     public S3Service(
             S3Client s3Client,
             S3Presigner s3Presigner,
-            @Value("${aws.s3.bucket}") String bucket
+            @Value("${aws.s3.bucket}") String bucket,
+            @Value("${aws.s3.region}") String region
     ) {
         this.s3Client = s3Client;
         this.s3Presigner = s3Presigner;
         this.bucket = bucket;
+        this.region = region;
     }
 
     /**
@@ -82,6 +85,14 @@ public class S3Service {
                 .build();
 
         return s3Presigner.presignGetObject(presignRequest).url().toString();
+    }
+
+    /**
+     * public 버킷 또는 CloudFront 전환 전 기본 S3 공개 URL을 생성합니다.
+     */
+    public String createPublicGetUrl(String key) {
+        String normalizedKey = Objects.requireNonNull(key, "key").replaceAll("^/+", "");
+        return "https://" + bucket + ".s3." + region + ".amazonaws.com/" + normalizedKey;
     }
 
     /**

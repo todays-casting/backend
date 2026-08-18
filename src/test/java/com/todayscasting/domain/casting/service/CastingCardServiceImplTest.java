@@ -9,6 +9,7 @@ import com.todayscasting.domain.casting.repository.CastingCardRepository;
 import com.todayscasting.domain.notification.service.PushNotificationService;
 import com.todayscasting.domain.record.entity.DailyRecord;
 import com.todayscasting.domain.record.repository.DailyRecordRepository;
+import com.todayscasting.domain.s3.service.S3Service;
 import com.todayscasting.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,9 @@ class CastingCardServiceImplTest {
     @Mock
     private PushNotificationService pushNotificationService;
 
+    @Mock
+    private S3Service s3Service;
+
     private CastingCardServiceImpl castingCardService;
 
     @BeforeEach
@@ -54,8 +58,12 @@ class CastingCardServiceImplTest {
                 aiAnalysisLogRepository,
                 dailyRecordRepository,
                 userRepository,
-                pushNotificationService
+                pushNotificationService,
+                s3Service
         );
+
+        when(s3Service.createPublicGetUrl(any(String.class)))
+                .thenAnswer(invocation -> "https://cdn.example.com/" + invocation.getArgument(0));
     }
 
     @Test
