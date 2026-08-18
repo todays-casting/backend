@@ -25,6 +25,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -66,7 +67,7 @@ class CastingCardServiceImplTest {
                 castingImageAsyncService
         );
 
-        when(s3Service.createPublicGetUrl(any(String.class)))
+        lenient().when(s3Service.createPublicGetUrl(any(String.class)))
                 .thenAnswer(invocation -> "https://cdn.example.com/" + invocation.getArgument(0));
     }
 
@@ -93,6 +94,35 @@ class CastingCardServiceImplTest {
 
         assertThat(response.getDailyRecordId()).isEqualTo(10L);
         verify(pushNotificationService).sendCastingCardReady(1L, 10L);
+    }
+
+    @Test
+    void returnsGeneratedImageKeyWithoutFallbackImageUrl() {
+        DailyRecord dailyRecord = DailyRecord.create(
+                1L,
+                LocalDate.of(2026, 8, 10),
+                "content",
+                List.of("GOOD"),
+                List.of(),
+                List.of(),
+                DailyRecord.Status.COMPLETED
+        );
+        CastingCard castingCard = CastingCard.builder()
+                .dailyRecordId(9L)
+                .genre("일상·코미디")
+                .roleName("담담한 관찰자")
+                .build();
+        ReflectionTestUtils.setField(castingCard, "id", 100L);
+        castingCard.updateGeneratedImageKey("casting-images/generated/9.png");
+
+        when(dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(9L, 1L))
+                .thenReturn(Optional.of(dailyRecord));
+        when(castingCardRepository.findByDailyRecordId(9L)).thenReturn(Optional.of(castingCard));
+
+        CastingCardResponseDTO response = castingCardService.getCastingCard(1L, 9L);
+
+        assertThat(response.getImageKey()).isEqualTo("casting-images/generated/9.png");
+        assertThat(response.getImageUrl()).isNull();
     }
 
     private void givenCastingCardCanBeCreated(Long userId, Long dailyRecordId) {
