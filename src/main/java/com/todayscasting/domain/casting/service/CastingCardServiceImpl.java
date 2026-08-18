@@ -10,6 +10,7 @@ import com.todayscasting.domain.analysis.repository.AiAnalysisLogRepository;
 import com.todayscasting.domain.casting.converter.CastingCardConverter;
 import com.todayscasting.domain.casting.dto.request.CastingCardRequestDTO;
 import com.todayscasting.domain.casting.dto.response.CastingCardResponseDTO;
+import com.todayscasting.domain.casting.dto.response.CastingCardStatus;
 import com.todayscasting.domain.casting.dto.response.CastingFavoriteCountResponseDTO;
 import com.todayscasting.domain.casting.dto.response.CastingFavoriteResponseDTO;
 import com.todayscasting.domain.casting.entity.CastingCard;
@@ -208,8 +209,9 @@ public class CastingCardServiceImpl implements CastingCardService {
     @Transactional(readOnly = true)
     public CastingCardResponseDTO getCastingCard(Long userId, Long dailyRecordId) {
         validateOwnership(userId, dailyRecordId);
-        CastingCard castingCard = findByDailyRecordIdOrThrow(dailyRecordId);
-        return toResponseDTO(castingCard, resolveGender(userId));
+        return castingCardRepository.findByDailyRecordId(dailyRecordId)
+                .map(castingCard -> toResponseDTO(castingCard, resolveGender(userId)))
+                .orElseGet(() -> getPendingResponse(dailyRecordId));
     }
 
     @Override
@@ -224,6 +226,20 @@ public class CastingCardServiceImpl implements CastingCardService {
     private CastingCard findByDailyRecordIdOrThrow(Long dailyRecordId) {
         return castingCardRepository.findByDailyRecordId(dailyRecordId)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
+    }
+
+    private CastingCardResponseDTO getPendingResponse(Long dailyRecordId) {
+        CastingCardStatus status = aiAnalysisLogRepository.findByDailyRecordId(dailyRecordId)
+                .filter(analysisLog -> analysisLog.getStatus() == AnalysisStatus.FAILED)
+                .map(analysisLog -> CastingCardStatus.FAILED)
+                .orElse(CastingCardStatus.WAITING);
+
+        return CastingCardResponseDTO.builder()
+                .status(status)
+                .dailyRecordId(dailyRecordId)
+                .hasCastingCard(false)
+                .hasGeneratedImage(false)
+                .build();
     }
 
     @Override

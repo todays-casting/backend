@@ -44,7 +44,8 @@ public class CastingCardController {
 
     @Operation(
             summary = "캐스팅 카드 조회",
-            description = "dailyRecordId(recordId)로 생성된 캐스팅 카드를 조회합니다. " +
+            description = "dailyRecordId(recordId)로 캐스팅 카드 상태를 조회합니다. 카드가 아직 생성되지 않은 정상 대기 상태는 " +
+                    "404가 아니라 WAITING 응답으로 반환합니다. 카드가 있으면 IMAGE_PENDING 또는 READY와 함께 " +
                     "genre, roleName, highlight, oneLineComment, scenePhrase, commentPhrase, additionalMood, characterPhrase, isFavorite 등을 반환합니다."
     )
     @GetMapping("/{recordId}")
