@@ -11,11 +11,12 @@ import com.todayscasting.common.exception.GeneralException;
 import com.todayscasting.global.security.jwt.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.mail.javamail.JavaMailSender;
-import java.security.SecureRandom;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -27,22 +28,19 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
     private final TokenBlacklistService tokenBlacklistService;
+    private final PasswordResetOtpService passwordResetOtpService;
 
     @Transactional
     public SignupStep1Response signUpStep1(SignupStep1Request request) {
-
         if (!request.password().equals(request.passwordConfirm())) {
             throw new GeneralException(AuthErrorStatus.PASSWORD_CONFIRM_MISMATCH);
         }
-
-        if (userRepository.existsByEmail(request.email())) {
+        if (userRepository.existsByEmailAndDeletedAtIsNull(request.email())) {
             throw new GeneralException(AuthErrorStatus.EMAIL_ALREADY_EXISTS);
         }
-
         User user = userRepository.save(new User(request.email()));
         String passwordHash = passwordEncoder.encode(request.password());
         authRepository.save(new Auth(user, Auth.Provider.LOCAL, passwordHash));
-
         return new SignupStep1Response(user.getId());
     }
 
@@ -50,9 +48,7 @@ public class AuthService {
     public TokenResponse signUpStep2(SignupStep2Request request) {
         User user = userRepository.findById(request.userId())
                 .orElseThrow(() -> new GeneralException(AuthErrorStatus.USER_NOT_FOUND));
-
         user.updateProfile(request.nickname(), request.age(), request.gender());
-
         return new TokenResponse(jwtProvider.generateAccessToken(user.getEmail()));
     }
 
@@ -60,43 +56,42 @@ public class AuthService {
     public TokenResponse login(LoginRequest request) {
         User user = userRepository.findByEmailAndDeletedAtIsNull(request.email())
                 .orElseThrow(() -> new GeneralException(AuthErrorStatus.USER_NOT_FOUND));
-
         Auth auth = authRepository.findByUserAndProvider(user, Auth.Provider.LOCAL)
                 .orElseThrow(() -> new GeneralException(AuthErrorStatus.AUTH_NOT_FOUND));
-
         if (!passwordEncoder.matches(request.password(), auth.getPasswordHash())) {
             throw new GeneralException(AuthErrorStatus.INVALID_PASSWORD);
         }
-
         return new TokenResponse(jwtProvider.generateAccessToken(request.email()));
     }
 
     @Transactional
-    public void resetPassword(PasswordResetRequest request) {
-        User user = userRepository.findByEmailAndDeletedAtIsNull(request.email())
-                .orElseThrow(() -> new GeneralException(AuthErrorStatus.USER_NOT_FOUND));
+    public void requestPasswordReset(PasswordResetRequestRequest request) {
+        Optional<User> userOpt = userRepository.findByEmailAndDeletedAtIsNull(request.email());
+        if (userOpt.isEmpty()) return;
 
-        Auth auth = authRepository.findByUserAndProvider(user, Auth.Provider.LOCAL)
-                .orElseThrow(() -> new GeneralException(AuthErrorStatus.AUTH_NOT_FOUND));
+        Optional<Auth> authOpt = authRepository.findByUserAndProvider(userOpt.get(), Auth.Provider.LOCAL);
+        if (authOpt.isEmpty()) return;
 
-        String tempPassword = generateTempPassword();
-        auth.updatePasswordHash(passwordEncoder.encode(tempPassword));
+        String otp = passwordResetOtpService.generateAndStore(request.email());
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(request.email());
-        message.setSubject("[투데이즈캐스팅] 임시 비밀번호 안내");
-        message.setText("임시 비밀번호: " + tempPassword + "\n로그인 후 비밀번호를 변경해주세요.");
+        message.setSubject("[투데이즈캐스팅] 비밀번호 재설정 인증코드");
+        message.setText("인증코드: " + otp + "\n5분 내에 입력해주세요.");
         mailSender.send(message);
     }
 
-    private String generateTempPassword() {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        SecureRandom random = new SecureRandom();
-        StringBuilder sb = new StringBuilder(10);
-        for (int i = 0; i < 10; i++) {
-            sb.append(chars.charAt(random.nextInt(chars.length())));
+    @Transactional
+    public void confirmPasswordReset(PasswordResetConfirmRequest request) {
+        if (!passwordResetOtpService.verifyAndInvalidate(request.email(), request.otp())) {
+            throw new GeneralException(AuthErrorStatus.INVALID_OTP);
         }
-        return sb.toString();
+        User user = userRepository.findByEmailAndDeletedAtIsNull(request.email())
+                .orElseThrow(() -> new GeneralException(AuthErrorStatus.USER_NOT_FOUND));
+        Auth auth = authRepository.findByUserAndProvider(user, Auth.Provider.LOCAL)
+                .orElseThrow(() -> new GeneralException(AuthErrorStatus.AUTH_NOT_FOUND));
+
+        auth.updatePasswordHash(passwordEncoder.encode(request.newPassword()));
     }
 
     @Transactional
@@ -104,19 +99,16 @@ public class AuthService {
         if (!request.newPassword().equals(request.newPasswordConfirm())) {
             throw new GeneralException(AuthErrorStatus.PASSWORD_CONFIRM_MISMATCH);
         }
-
         User user = userRepository.findByEmailAndDeletedAtIsNull(email)
                 .orElseThrow(() -> new GeneralException(AuthErrorStatus.USER_NOT_FOUND));
-
         Auth auth = authRepository.findByUserAndProvider(user, Auth.Provider.LOCAL)
                 .orElseThrow(() -> new GeneralException(AuthErrorStatus.AUTH_NOT_FOUND));
-
         if (!passwordEncoder.matches(request.currentPassword(), auth.getPasswordHash())) {
             throw new GeneralException(AuthErrorStatus.INVALID_PASSWORD);
         }
-
         auth.updatePasswordHash(passwordEncoder.encode(request.newPassword()));
     }
+
     public void logout(String token) {
         long expiration = jwtProvider.getExpiration(token);
         if (expiration > 0) {

@@ -66,6 +66,8 @@ public class User {
     }
 
     public void withdraw() {
+        this.email = "deleted_" + this.id + "_" + System.currentTimeMillis() + "@deleted.com";
         this.deletedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 }
