@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -40,6 +41,7 @@ import java.util.Set;
 public class CastingCardServiceImpl implements CastingCardService {
 
     private static final int MAX_ADDITIONAL_MOOD_COUNT = 2;
+    private static final Duration GENERATED_IMAGE_URL_DURATION = Duration.ofHours(24);
 
     private final CastingCardRepository castingCardRepository;
     private final AiAnalysisLogRepository aiAnalysisLogRepository;
@@ -47,6 +49,7 @@ public class CastingCardServiceImpl implements CastingCardService {
     private final UserRepository userRepository;
     private final PushNotificationService pushNotificationService;
     private final S3Service s3Service;
+    private final CastingImageAsyncService castingImageAsyncService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -92,21 +95,30 @@ public class CastingCardServiceImpl implements CastingCardService {
             throw new GeneralException(ErrorStatus.INVALID_REQUEST);
         }
 
-        notifyCastingCardReadyAfterCommit(userId, savedCastingCard.getDailyRecordId());
+        User.Gender gender = resolveGender(userId);
+        runAfterCommit(() -> {
+            sendCastingCardReadyNotification(userId, savedCastingCard.getDailyRecordId());
+            castingImageAsyncService.generateAndAttachImage(
+                    savedCastingCard.getId(),
+                    savedCastingCard.getGenre(),
+                    gender,
+                    savedCastingCard.getHighlight()
+            );
+        });
 
-        return toResponseDTO(savedCastingCard, resolveGender(userId));
+        return toResponseDTO(savedCastingCard, gender);
     }
 
-    private void notifyCastingCardReadyAfterCommit(Long userId, Long dailyRecordId) {
+    private void runAfterCommit(Runnable action) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            sendCastingCardReadyNotification(userId, dailyRecordId);
+            action.run();
             return;
         }
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                sendCastingCardReadyNotification(userId, dailyRecordId);
+                action.run();
             }
         });
     }
@@ -233,6 +245,11 @@ public class CastingCardServiceImpl implements CastingCardService {
                 .toList();
     }
 
+    @Override
+    public String getImageUrl(String imageKey) {
+        return s3Service.createPresignedGetUrl(imageKey, GENERATED_IMAGE_URL_DURATION);
+    }
+
     private CastingFavoriteResponseDTO toFavoriteResponseDTO(CastingCard castingCard, User.Gender gender) {
         return CastingFavoriteResponseDTO.builder()
                 .dailyRecordId(castingCard.getDailyRecordId())
@@ -241,6 +258,7 @@ public class CastingCardServiceImpl implements CastingCardService {
                 .highlight(castingCard.getHighlight())
                 .oneLineComment(castingCard.getOneLineComment())
                 .imageUrl(resolveImageUrl(castingCard, gender))
+                .imageKey(castingCard.getGeneratedImageKey())
                 .additionalMood(castingCard.getAdditionalMood())
                 .isFavorite(castingCard.getIsFavorite())
                 .generatedAt(castingCard.getGeneratedAt())
@@ -252,6 +270,9 @@ public class CastingCardServiceImpl implements CastingCardService {
     }
 
     private String resolveImageUrl(CastingCard castingCard, User.Gender gender) {
+        if (castingCard.getGeneratedImageKey() != null) {
+            return null;
+        }
         String imageKey = CastingImageResolver.resolveImageKey(castingCard.getGenre(), gender);
         return s3Service.createPublicGetUrl(imageKey);
     }

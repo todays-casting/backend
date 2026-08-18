@@ -14,6 +14,7 @@ public class CastingCardConverter {
                 .dailyRecordId(castingCard.getDailyRecordId())
                 .castingImageId(castingCard.getCastingImageId())
                 .imageUrl(imageUrl)
+                .imageKey(castingCard.getGeneratedImageKey())
                 .genre(castingCard.getGenre())
                 .roleName(castingCard.getRoleName())
                 .highlight(castingCard.getHighlight())
