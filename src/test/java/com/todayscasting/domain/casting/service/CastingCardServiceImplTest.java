@@ -4,6 +4,7 @@ import com.todayscasting.domain.analysis.entity.AiAnalysisLog;
 import com.todayscasting.domain.analysis.repository.AiAnalysisLogRepository;
 import com.todayscasting.domain.casting.dto.request.CastingCardRequestDTO;
 import com.todayscasting.domain.casting.dto.response.CastingCardResponseDTO;
+import com.todayscasting.domain.casting.dto.response.CastingCardStatus;
 import com.todayscasting.domain.casting.entity.CastingCard;
 import com.todayscasting.domain.casting.repository.CastingCardRepository;
 import com.todayscasting.domain.notification.service.PushNotificationService;
@@ -79,6 +80,9 @@ class CastingCardServiceImplTest {
         CastingCardResponseDTO response = castingCardService.createCastingCard(1L, request);
 
         assertThat(response.getDailyRecordId()).isEqualTo(10L);
+        assertThat(response.getStatus()).isEqualTo(CastingCardStatus.IMAGE_PENDING);
+        assertThat(response.getHasCastingCard()).isTrue();
+        assertThat(response.getHasGeneratedImage()).isFalse();
         verify(pushNotificationService).sendCastingCardReady(1L, 10L);
         verify(castingImageAsyncService).generateAndAttachImage(100L, "Drama", null, "Highlight");
     }
@@ -121,8 +125,67 @@ class CastingCardServiceImplTest {
 
         CastingCardResponseDTO response = castingCardService.getCastingCard(1L, 9L);
 
+        assertThat(response.getStatus()).isEqualTo(CastingCardStatus.READY);
+        assertThat(response.getHasCastingCard()).isTrue();
+        assertThat(response.getHasGeneratedImage()).isTrue();
         assertThat(response.getImageKey()).isEqualTo("casting-images/generated/9.png");
         assertThat(response.getImageUrl()).isNull();
+    }
+
+    @Test
+    void returnsWaitingWhenCastingCardDoesNotExistYet() {
+        DailyRecord dailyRecord = DailyRecord.create(
+                1L,
+                LocalDate.of(2026, 8, 10),
+                "content",
+                List.of("GOOD"),
+                List.of(),
+                List.of(),
+                DailyRecord.Status.COMPLETED
+        );
+
+        when(dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(15L, 1L))
+                .thenReturn(Optional.of(dailyRecord));
+        when(castingCardRepository.findByDailyRecordId(15L)).thenReturn(Optional.empty());
+        when(aiAnalysisLogRepository.findByDailyRecordId(15L)).thenReturn(Optional.empty());
+
+        CastingCardResponseDTO response = castingCardService.getCastingCard(1L, 15L);
+
+        assertThat(response.getStatus()).isEqualTo(CastingCardStatus.WAITING);
+        assertThat(response.getDailyRecordId()).isEqualTo(15L);
+        assertThat(response.getHasCastingCard()).isFalse();
+        assertThat(response.getHasGeneratedImage()).isFalse();
+    }
+
+    @Test
+    void returnsFailedWhenAnalysisFailedAndCastingCardDoesNotExist() {
+        DailyRecord dailyRecord = DailyRecord.create(
+                1L,
+                LocalDate.of(2026, 8, 10),
+                "content",
+                List.of("GOOD"),
+                List.of(),
+                List.of(),
+                DailyRecord.Status.COMPLETED
+        );
+        AiAnalysisLog analysisLog = AiAnalysisLog.builder()
+                .dailyRecordId(15L)
+                .provider("OPENAI")
+                .model("test")
+                .prompt("prompt")
+                .build();
+        analysisLog.markFailed("failed");
+
+        when(dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(15L, 1L))
+                .thenReturn(Optional.of(dailyRecord));
+        when(castingCardRepository.findByDailyRecordId(15L)).thenReturn(Optional.empty());
+        when(aiAnalysisLogRepository.findByDailyRecordId(15L)).thenReturn(Optional.of(analysisLog));
+
+        CastingCardResponseDTO response = castingCardService.getCastingCard(1L, 15L);
+
+        assertThat(response.getStatus()).isEqualTo(CastingCardStatus.FAILED);
+        assertThat(response.getHasCastingCard()).isFalse();
+        assertThat(response.getHasGeneratedImage()).isFalse();
     }
 
     private void givenCastingCardCanBeCreated(Long userId, Long dailyRecordId) {
