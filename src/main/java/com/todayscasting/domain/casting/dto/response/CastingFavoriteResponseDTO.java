@@ -16,6 +16,7 @@ public class CastingFavoriteResponseDTO {
     private String highlight;
     private String oneLineComment;
     private String imageUrl;
+    private String imageKey;
     private List<String> additionalMood;
     private Boolean isFavorite;
     private LocalDateTime generatedAt;

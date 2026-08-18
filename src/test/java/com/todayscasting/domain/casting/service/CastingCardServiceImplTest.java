@@ -47,10 +47,10 @@ class CastingCardServiceImplTest {
     private PushNotificationService pushNotificationService;
 
     @Mock
-    private CastingImageAsyncService castingImageAsyncService;
+    private S3Service s3Service;
 
     @Mock
-    private S3Service s3Service;
+    private CastingImageAsyncService castingImageAsyncService;
 
     private CastingCardServiceImpl castingCardService;
 
@@ -62,9 +62,12 @@ class CastingCardServiceImplTest {
                 dailyRecordRepository,
                 userRepository,
                 pushNotificationService,
-                castingImageAsyncService,
-                s3Service
+                s3Service,
+                castingImageAsyncService
         );
+
+        when(s3Service.createPublicGetUrl(any(String.class)))
+                .thenAnswer(invocation -> "https://cdn.example.com/" + invocation.getArgument(0));
     }
 
     @Test
@@ -76,6 +79,7 @@ class CastingCardServiceImplTest {
 
         assertThat(response.getDailyRecordId()).isEqualTo(10L);
         verify(pushNotificationService).sendCastingCardReady(1L, 10L);
+        verify(castingImageAsyncService).generateAndAttachImage(100L, "Drama", null, "Highlight");
     }
 
     @Test
@@ -121,7 +125,11 @@ class CastingCardServiceImplTest {
                 .thenReturn(Optional.of(dailyRecord));
         when(castingCardRepository.findByDailyRecordId(dailyRecordId)).thenReturn(Optional.empty());
         when(aiAnalysisLogRepository.findByDailyRecordId(dailyRecordId)).thenReturn(Optional.of(analysisLog));
-        when(castingCardRepository.save(any(CastingCard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(castingCardRepository.save(any(CastingCard.class))).thenAnswer(invocation -> {
+            CastingCard savedCard = invocation.getArgument(0);
+            ReflectionTestUtils.setField(savedCard, "id", 100L);
+            return savedCard;
+        });
     }
 
     private CastingCardRequestDTO request(Long dailyRecordId) {

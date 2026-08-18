@@ -41,14 +41,15 @@ import java.util.Set;
 public class CastingCardServiceImpl implements CastingCardService {
 
     private static final int MAX_ADDITIONAL_MOOD_COUNT = 2;
+    private static final Duration GENERATED_IMAGE_URL_DURATION = Duration.ofHours(24);
 
     private final CastingCardRepository castingCardRepository;
     private final AiAnalysisLogRepository aiAnalysisLogRepository;
     private final DailyRecordRepository dailyRecordRepository;
     private final UserRepository userRepository;
     private final PushNotificationService pushNotificationService;
-    private final CastingImageAsyncService castingImageAsyncService; // 이슈 #93
-    private final S3Service s3Service; // 이슈 #93 (presigned URL 조회용으로 여전히 필요)
+    private final S3Service s3Service;
+    private final CastingImageAsyncService castingImageAsyncService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -95,74 +96,29 @@ public class CastingCardServiceImpl implements CastingCardService {
         }
 
         User.Gender gender = resolveGender(userId);
-        triggerImageGenerationAfterCommit(savedCastingCard.getId(), savedCastingCard.getGenre(),
-                gender, savedCastingCard.getHighlight());
-
-        notifyCastingCardReadyAfterCommit(userId, savedCastingCard.getDailyRecordId());
-
-        ImagePresentation image = resolveImagePresentation(savedCastingCard, gender);
-        return CastingCardConverter.toResponseDTO(savedCastingCard, image.imageUrl(), image.imageKey());
-    }
-
-    // imageUrl(기존 매칭 방식, 바로 쓸 수 있는 고정 URL)과 imageKey(실시간 생성 이미지의 S3 key,
-    // 프론트가 별도 API로 URL을 교환해서 써야 함)를 함께 담는 값. (이슈 #93)
-    // 팀 논의 결과, presigned URL을 API 응답에 바로 실어주면 프론트가 그 URL을 캐싱해뒀다가
-    // 유효기간이 지난 뒤에 써서 깨지는 문제가 생길 수 있어, 실시간 생성 이미지는 URL이 아니라
-    // key만 내려주고 프론트가 실제로 화면에 그리기 직전에 getImageUrl()로 매번 새로 교환하도록 함.
-    private record ImagePresentation(String imageUrl, String imageKey) {
-    }
-
-    // 실시간 생성된 이미지(generatedImageKey)가 있으면 key를 반환하고(URL은 null),
-    // 없으면(생성 실패 등, 또는 비동기 생성이 아직 안 끝난 경우) 기존 CastingImageResolver
-    // 매칭 방식의 고정 URL을 반환한다(key는 null). 항상 둘 중 하나만 채워진다. (이슈 #93)
-    private ImagePresentation resolveImagePresentation(CastingCard castingCard, User.Gender gender) {
-        if (castingCard.getGeneratedImageKey() != null) {
-            return new ImagePresentation(null, castingCard.getGeneratedImageKey());
-        }
-        return new ImagePresentation(CastingImageResolver.resolveImageUrl(castingCard.getGenre(), gender), null);
-    }
-
-    // imageKey(S3 객체 key)를 받아서 presigned URL로 변환한다. 아무 key나 서명해주면
-    // 우리 S3 버킷의 임의 경로를 조회할 수 있게 되는 위험이 있어, 우리가 실제로 발급한 형식
-    // (casting-cards/generated/ 로 시작하는 key)인지 최소한으로 검증한다. (이슈 #93)
-    @Override
-    public String getImageUrl(String imageKey) {
-        if (imageKey == null || !imageKey.startsWith("casting-cards/generated/")) {
-            throw new GeneralException(ErrorStatus.INVALID_REQUEST);
-        }
-        return s3Service.createPresignedGetUrl(imageKey, Duration.ofHours(24));
-    }
-
-    // 카드 생성 트랜잭션이 커밋된 이후에만 비동기 이미지 생성을 트리거한다.
-    // 트랜잭션 커밋 전에 트리거하면, 비동기 스레드가 아직 DB에 반영 안 된 카드를 조회하려다
-    // 실패할 수 있어서다(같은 이유로 알림 발송도 afterCommit에서 처리하고 있음). (이슈 #93)
-    // 카드 생성 API는 이미지 완성을 기다리지 않고 즉시 응답하며, 이미지는 백그라운드에서 만들어진
-    // 뒤 별도로 DB에 반영되고, 이후 조회 시점에 완성된 이미지 URL로 자연스럽게 바뀐다.
-    private void triggerImageGenerationAfterCommit(Long castingCardId, String genre,
-                                                   User.Gender gender, String highlight) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            castingImageAsyncService.generateAndAttachImage(castingCardId, genre, gender, highlight);
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                castingImageAsyncService.generateAndAttachImage(castingCardId, genre, gender, highlight);
-            }
+        runAfterCommit(() -> {
+            sendCastingCardReadyNotification(userId, savedCastingCard.getDailyRecordId());
+            castingImageAsyncService.generateAndAttachImage(
+                    savedCastingCard.getId(),
+                    savedCastingCard.getGenre(),
+                    gender,
+                    savedCastingCard.getHighlight()
+            );
         });
+
+        return toResponseDTO(savedCastingCard, gender);
     }
 
-    private void notifyCastingCardReadyAfterCommit(Long userId, Long dailyRecordId) {
+    private void runAfterCommit(Runnable action) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            sendCastingCardReadyNotification(userId, dailyRecordId);
+            action.run();
             return;
         }
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                sendCastingCardReadyNotification(userId, dailyRecordId);
+                action.run();
             }
         });
     }
@@ -252,9 +208,7 @@ public class CastingCardServiceImpl implements CastingCardService {
     public CastingCardResponseDTO getCastingCard(Long userId, Long dailyRecordId) {
         validateOwnership(userId, dailyRecordId);
         CastingCard castingCard = findByDailyRecordIdOrThrow(dailyRecordId);
-        User.Gender gender = resolveGender(userId);
-        ImagePresentation image = resolveImagePresentation(castingCard, gender);
-        return CastingCardConverter.toResponseDTO(castingCard, image.imageUrl(), image.imageKey());
+        return toResponseDTO(castingCard, resolveGender(userId));
     }
 
     @Override
@@ -263,9 +217,7 @@ public class CastingCardServiceImpl implements CastingCardService {
         validateOwnership(userId, dailyRecordId);
         CastingCard castingCard = findByDailyRecordIdOrThrow(dailyRecordId);
         castingCard.toggleFavorite();
-        User.Gender gender = resolveGender(userId);
-        ImagePresentation image = resolveImagePresentation(castingCard, gender);
-        return CastingCardConverter.toResponseDTO(castingCard, image.imageUrl(), image.imageKey());
+        return toResponseDTO(castingCard, resolveGender(userId));
     }
 
     private CastingCard findByDailyRecordIdOrThrow(Long dailyRecordId) {
@@ -293,6 +245,11 @@ public class CastingCardServiceImpl implements CastingCardService {
                 .toList();
     }
 
+    @Override
+    public String getImageUrl(String imageKey) {
+        return s3Service.createPresignedGetUrl(imageKey, GENERATED_IMAGE_URL_DURATION);
+    }
+
     private CastingFavoriteResponseDTO toFavoriteResponseDTO(CastingCard castingCard, User.Gender gender) {
         return CastingFavoriteResponseDTO.builder()
                 .dailyRecordId(castingCard.getDailyRecordId())
@@ -300,11 +257,24 @@ public class CastingCardServiceImpl implements CastingCardService {
                 .roleName(castingCard.getRoleName())
                 .highlight(castingCard.getHighlight())
                 .oneLineComment(castingCard.getOneLineComment())
-                .imageUrl(CastingImageResolver.resolveImageUrl(castingCard.getGenre(), gender))
+                .imageUrl(resolveImageUrl(castingCard, gender))
+                .imageKey(castingCard.getGeneratedImageKey())
                 .additionalMood(castingCard.getAdditionalMood())
                 .isFavorite(castingCard.getIsFavorite())
                 .generatedAt(castingCard.getGeneratedAt())
                 .build();
+    }
+
+    private CastingCardResponseDTO toResponseDTO(CastingCard castingCard, User.Gender gender) {
+        return CastingCardConverter.toResponseDTO(castingCard, resolveImageUrl(castingCard, gender));
+    }
+
+    private String resolveImageUrl(CastingCard castingCard, User.Gender gender) {
+        if (castingCard.getGeneratedImageKey() != null) {
+            return null;
+        }
+        String imageKey = CastingImageResolver.resolveImageKey(castingCard.getGenre(), gender);
+        return s3Service.createPublicGetUrl(imageKey);
     }
 
 }
