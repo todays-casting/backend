@@ -38,7 +38,7 @@ public class KakaoAuthService {
         String providerId = String.valueOf(userInfo.id());
 
         if (email == null || email.isBlank()) {
-            throw new RuntimeException("카카오 계정에 이메일 정보가 없습니다.");
+            email = "kakao_" + providerId + "@kakao.com";
         }
 
         Auth auth = authRepository.findByProviderAndProviderUserId(Auth.Provider.KAKAO, providerId)
