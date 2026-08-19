@@ -47,17 +47,19 @@ public class DailyRecordConverter {
     }
 
     public static HistoryCardResponse toHistoryCardResponse(DailyRecord dailyRecord, CastingCard castingCard) {
+        boolean hasCastingCard = castingCard != null;
         return new HistoryCardResponse(
                 dailyRecord.getId(),
                 dailyRecord.getRecordDate(),
                 dailyRecord.getMood(),
                 dailyRecord.getContent(),
-                castingCard.getTitle(),
-                castingCard.getGenre(),
-                castingCard.getRoleName(),
-                castingCard.getHighlight(),
-                castingCard.getOneLineComment(),
-                castingCard.getIsFavorite()
+                hasCastingCard,
+                hasCastingCard ? castingCard.getTitle() : null,
+                hasCastingCard ? castingCard.getGenre() : null,
+                hasCastingCard ? castingCard.getRoleName() : null,
+                hasCastingCard ? castingCard.getHighlight() : null,
+                hasCastingCard ? castingCard.getOneLineComment() : null,
+                hasCastingCard ? castingCard.getIsFavorite() : false
         );
     }
 }

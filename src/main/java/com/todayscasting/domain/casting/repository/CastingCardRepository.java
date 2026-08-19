@@ -16,7 +16,7 @@ public interface CastingCardRepository extends JpaRepository<CastingCard, Long> 
     List<CastingCard> findByDailyRecordIdInAndIsFavoriteTrue(List<Long> dailyRecordIds);
 
     // 히스토리 목록용: 기록된 날짜들(dailyRecordIds) 중 캐스팅카드가 존재하는 것 전체 조회
-    // (즐겨찾기 여부 상관없음 — 캐스팅카드 없는 날 제외하는 INNER JOIN 로직에 사용)
+    // (즐겨찾기 여부 상관없음. 카드가 없는 기록은 히스토리 응답에서 캐스팅 필드만 null로 내려간다.)
     List<CastingCard> findByDailyRecordIdIn(List<Long> dailyRecordIds);
 
     // 마이페이지 "찜한 카드" 개수 조회용. casting_cards엔 user_id가 없어 daily_records와 조인해서
