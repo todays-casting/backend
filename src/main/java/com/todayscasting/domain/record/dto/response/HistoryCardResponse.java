@@ -9,6 +9,7 @@ public record HistoryCardResponse (
     LocalDate recordDate,
     List<String> mood,
     String content,
+    Boolean hasCastingCard,
     String title,
     String genre,
     String roleName,

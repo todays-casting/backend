@@ -32,9 +32,9 @@ class HistoryServiceImplTest {
     @InjectMocks
     private HistoryServiceImpl historyService;
 
-    // 캐스팅카드가 있는 record(10L)만 결과에 남고, 없는 record(20L)는 제외되는지 검증
+    // 캐스팅카드가 없는 기록도 히스토리에 남고, 캐스팅 관련 필드만 비워지는지 검증
     @Test
-    void excludesRecordsWithoutCastingCard() {
+    void includesRecordsWithoutCastingCard() {
         LocalDate start = LocalDate.of(2025, 5, 1);
         LocalDate end = LocalDate.of(2025, 5, 7);
 
@@ -63,10 +63,17 @@ class HistoryServiceImplTest {
 
         List<HistoryCardResponse> result = historyService.getHistory(1L, start, end);
 
-        assertThat(result).hasSize(1);
+        assertThat(result).hasSize(2);
         assertThat(result.get(0).recordId()).isEqualTo(10L);
+        assertThat(result.get(0).hasCastingCard()).isTrue();
         assertThat(result.get(0).title()).isEqualTo("따뜻한 조연");
         assertThat(result.get(0).isFavorite()).isFalse();
+        assertThat(result.get(1).recordId()).isEqualTo(20L);
+        assertThat(result.get(1).hasCastingCard()).isFalse();
+        assertThat(result.get(1).title()).isNull();
+        assertThat(result.get(1).genre()).isNull();
+        assertThat(result.get(1).roleName()).isNull();
+        assertThat(result.get(1).isFavorite()).isFalse();
     }
 
     // 날짜범위에 기록이 없으면 빈 리스트 반환 + 캐스팅카드 조회는 아예 안 하는지(불필요한 쿼리 방지) 검증
