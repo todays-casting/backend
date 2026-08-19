@@ -65,6 +65,7 @@ jobs:
       KAKAO_CLIENT_ID: ci-test-kakao-client-id
       KAKAO_REDIRECT_URI: http://localhost:8080/auth/kakao
       KAKAO_APP_ID: 0
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000"
       MAIL_USERNAME: ci-test@gmail.com
       MAIL_PASSWORD: ci-test-password
       REDIS_HOST: localhost

@@ -45,15 +45,14 @@ public class HistoryServiceImpl implements HistoryService {
                 .map(DailyRecord::getId)
                 .toList();
 
-        // recordId -> CastingCard 매핑 (없는 recordId는 이 맵에 아예 안 들어감)
+        // recordId -> CastingCard 매핑. 카드가 아직 없는 기록도 히스토리에는 노출하고,
+        // 캐스팅 관련 필드만 null로 내려준다.
         Map<Long, CastingCard> castingCardByRecordId = castingCardRepository
                 .findByDailyRecordIdIn(recordIds)
                 .stream()
                 .collect(Collectors.toMap(CastingCard::getDailyRecordId, castingCard -> castingCard));
 
         return records.stream()
-                // DailyRecord 목록을 돌면서, 캐스팅카드가 있는 record인지 하나씩 확인
-                .filter(record -> castingCardByRecordId.containsKey(record.getId()))
                 .map(record -> DailyRecordConverter.toHistoryCardResponse(record, castingCardByRecordId.get(record.getId())))
                 .toList();
     }

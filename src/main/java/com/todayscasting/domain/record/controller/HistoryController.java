@@ -26,7 +26,7 @@ public class HistoryController {
     private final HistoryService historyService;
     private final AuthenticatedUserResolver authenticatedUserResolver;
 
-    @Operation(summary = "날짜범위 히스토리 카드 조회", description = "startDate~endDate 범위의 기록 중 캐스팅 결과가 있는 날만 카드 형태로 반환합니다(INNER JOIN, 캐스팅 결과 없는 날은 제외).")
+    @Operation(summary = "날짜범위 히스토리 카드 조회", description = "startDate~endDate 범위의 완료된 기록을 카드 형태로 반환합니다. 캐스팅 결과가 아직 없는 날도 포함하며, 이 경우 hasCastingCard=false이고 캐스팅 관련 필드는 null로 반환합니다.")
     @GetMapping
     public ApiResponse<List<HistoryCardResponse>> getHistory(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
