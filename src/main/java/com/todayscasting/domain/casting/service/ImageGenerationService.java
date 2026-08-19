@@ -166,8 +166,11 @@ public class ImageGenerationService {
                 .append("across many images, aim for a healthy mix where roughly one in three lean toward ")
                 .append("bright daytime light, with the rest spread across sunset, overcast, night, and warm ")
                 .append("indoor lighting as fits the scene. Don't force any one time of day onto every scene; ")
-                .append("let the specific moment described decide. Keep a dark-mode-app-friendly color palette ")
-                .append("and avoid harsh bright white daylight tones.");
+                .append("let the specific moment described decide. However, if the moment described is clearly ")
+                .append("positive, hopeful, or upbeat and does NOT explicitly mention a specific time of day or ")
+                .append("lighting condition (such as sunset, night, evening, morning, or an indoor setting), ")
+                .append("lean toward bright, clear daytime lighting for that image specifically. Keep a ")
+                .append("dark-mode-app-friendly color palette and avoid harsh bright white daylight tones.");
 
         return prompt.toString();
     }
