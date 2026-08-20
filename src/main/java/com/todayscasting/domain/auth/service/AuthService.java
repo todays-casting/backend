@@ -4,7 +4,9 @@ import com.todayscasting.global.security.jwt.JwtProvider;
 import com.todayscasting.domain.auth.code.AuthErrorStatus;
 import com.todayscasting.domain.auth.dto.*;
 import com.todayscasting.domain.auth.entity.Auth;
+import com.todayscasting.domain.auth.entity.WithdrawnEmail;
 import com.todayscasting.domain.auth.repository.AuthRepository;
+import com.todayscasting.domain.auth.repository.WithdrawnEmailRepository;
 import com.todayscasting.domain.user.entity.User;
 import com.todayscasting.domain.user.repository.UserRepository;
 import com.todayscasting.common.exception.GeneralException;
@@ -24,6 +26,8 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final AuthRepository authRepository;
+    private final WithdrawnEmailRepository withdrawnEmailRepository;
+    private final EmailHashService emailHashService;
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
@@ -34,6 +38,10 @@ public class AuthService {
     public SignupStep1Response signUpStep1(SignupStep1Request request) {
         if (!request.password().equals(request.passwordConfirm())) {
             throw new GeneralException(AuthErrorStatus.PASSWORD_CONFIRM_MISMATCH);
+        }
+        String emailHash = emailHashService.hash(request.email());
+        if (withdrawnEmailRepository.existsByEmailHash(emailHash)) {
+            throw new GeneralException(AuthErrorStatus.EMAIL_ALREADY_EXISTS);
         }
         if (userRepository.existsByEmailAndDeletedAtIsNull(request.email())) {
             throw new GeneralException(AuthErrorStatus.EMAIL_ALREADY_EXISTS);
@@ -120,6 +128,10 @@ public class AuthService {
     public void withdraw(String email, String token) {
         User user = userRepository.findByEmailAndDeletedAtIsNull(email)
                 .orElseThrow(() -> new GeneralException(AuthErrorStatus.USER_NOT_FOUND));
+        String emailHash = emailHashService.hash(user.getEmail());
+        if (!withdrawnEmailRepository.existsByEmailHash(emailHash)) {
+            withdrawnEmailRepository.save(new WithdrawnEmail(emailHash));
+        }
         user.withdraw();
         authRepository.findAllByUser(user).forEach(Auth::withdraw);
         logout(token);
