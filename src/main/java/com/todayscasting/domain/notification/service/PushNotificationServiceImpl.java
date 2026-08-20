@@ -77,6 +77,25 @@ public class PushNotificationServiceImpl implements PushNotificationService {
         return response;
     }
 
+    @Override
+    public PushNotificationResponse sendDraftRecordReminder(Long userId, Long dailyRecordId) {
+        NotificationType type = NotificationType.DRAFT_RECORD_REMINDER;
+        PushNotificationRequest request = new PushNotificationRequest(
+                type.title(),
+                type.body(),
+                Map.of(
+                        "type", type.name(),
+                        "dailyRecordId", String.valueOf(dailyRecordId)
+                )
+        );
+
+        PushNotificationResponse response = send(userId, request, false);
+        if (response.successCount() > 0) {
+            saveNotification(userId, type, request);
+        }
+        return response;
+    }
+
     private void saveNotification(Long userId, NotificationType type, PushNotificationRequest request) {
         notificationRepository.save(Notification.create(
                 userId,

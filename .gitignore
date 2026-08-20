@@ -45,3 +45,5 @@ firebase-service-account.json
 
 .DS_Store
 **/.DS_Store
+
+.chrome-debug/
