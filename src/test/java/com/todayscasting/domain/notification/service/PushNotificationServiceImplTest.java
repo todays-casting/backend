@@ -93,4 +93,19 @@ class PushNotificationServiceImplTest {
         assertThat(response.failureCount()).isZero();
         verify(notificationRepository).save(any(Notification.class));
     }
+
+    @Test
+    void savesDraftRecordReminderNotificationWhenPushSucceeds() throws Exception {
+        when(userSettingsRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.empty());
+        when(userFcmTokenRepository.findByUserIdAndDeletedAtIsNull(1L))
+                .thenReturn(List.of(UserFcmToken.create(1L, "token-1")));
+        when(firebaseMessagingProvider.getIfAvailable()).thenReturn(firebaseMessaging);
+        when(firebaseMessaging.send(any(Message.class))).thenReturn("message-id");
+
+        PushNotificationResponse response = pushNotificationService.sendDraftRecordReminder(1L, 10L);
+
+        assertThat(response.successCount()).isOne();
+        assertThat(response.failureCount()).isZero();
+        verify(notificationRepository).save(any(Notification.class));
+    }
 }

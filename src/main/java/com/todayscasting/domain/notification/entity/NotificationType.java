@@ -9,6 +9,10 @@ public enum NotificationType {
     DAILY_RECORD_REMINDER(
             "오늘의 기록",
             "오늘 하루를 기록하고 캐스팅을 받아보세요."
+    ),
+    DRAFT_RECORD_REMINDER(
+            "작성 중인 기록",
+            "임시 저장한 기록을 마무리하고 캐스팅을 받아보세요."
     );
 
     private final String title;
