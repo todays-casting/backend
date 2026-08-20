@@ -49,6 +49,7 @@ LOCAL_DB_PASSWORD=change-me
 # AWS S3
 AWS_S3_BUCKET_NAME=your-s3-bucket-name
 AWS_S3_REGION=your-s3-region
+WITHDRAWN_EMAIL_HMAC_SECRET=replace-with-a-random-secret-at-least-32-bytes-long
 
 TZ=Asia/Seoul
 ```
@@ -173,6 +174,7 @@ LOCAL_DB_USERNAME
 LOCAL_DB_PASSWORD
 AWS_S3_BUCKET_NAME
 AWS_S3_REGION
+WITHDRAWN_EMAIL_HMAC_SECRET
 ```
 
 - `DOCKERHUB_USERNAME`: DockerHub 계정명입니다.
@@ -186,6 +188,7 @@ AWS_S3_REGION
 - `LOCAL_DB_PASSWORD`: 배포 환경에서 사용할 RDS 비밀번호입니다.
 - `AWS_S3_BUCKET_NAME`: 이미지 파일을 저장할 S3 버킷명입니다.
 - `AWS_S3_REGION`: S3 버킷이 생성된 AWS 리전입니다.
+- `WITHDRAWN_EMAIL_HMAC_SECRET`: 탈퇴 이메일 재가입 차단용 HMAC 비밀키입니다. GitHub Secrets와 서버 환경변수에 같은 값을 등록합니다.
 
 ## AWS EC2 배포
 
