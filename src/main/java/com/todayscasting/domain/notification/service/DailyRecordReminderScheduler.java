@@ -2,6 +2,7 @@ package com.todayscasting.domain.notification.service;
 
 import com.todayscasting.domain.notification.entity.UserSettings;
 import com.todayscasting.domain.notification.repository.UserSettingsRepository;
+import com.todayscasting.domain.record.entity.DailyRecord;
 import com.todayscasting.domain.record.repository.DailyRecordRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -33,8 +34,16 @@ public class DailyRecordReminderScheduler {
     }
 
     private void sendReminderIfNoRecord(Long userId, LocalDate today) {
-        if (dailyRecordRepository.findByUserIdAndRecordDateAndDeletedAtIsNull(userId, today).isEmpty()) {
-            pushNotificationService.sendDailyRecordReminder(userId);
+        dailyRecordRepository.findByUserIdAndRecordDateAndDeletedAtIsNull(userId, today)
+                .ifPresentOrElse(
+                        record -> sendReminderIfDraft(record, userId),
+                        () -> pushNotificationService.sendDailyRecordReminder(userId)
+                );
+    }
+
+    private void sendReminderIfDraft(DailyRecord record, Long userId) {
+        if (record.getStatus() == DailyRecord.Status.DRAFT) {
+            pushNotificationService.sendDraftRecordReminder(userId, record.getId());
         }
     }
 }

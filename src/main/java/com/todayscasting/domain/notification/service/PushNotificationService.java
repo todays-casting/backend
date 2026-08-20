@@ -10,4 +10,6 @@ public interface PushNotificationService {
     PushNotificationResponse sendCastingCardReady(Long userId, Long dailyRecordId);
 
     PushNotificationResponse sendDailyRecordReminder(Long userId);
+
+    PushNotificationResponse sendDraftRecordReminder(Long userId, Long dailyRecordId);
 }
