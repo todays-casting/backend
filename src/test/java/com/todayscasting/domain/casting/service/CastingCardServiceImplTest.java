@@ -56,6 +56,9 @@ class CastingCardServiceImplTest {
     @Mock
     private CastingImageAsyncService castingImageAsyncService;
 
+    @Mock
+    private CastingCardImageComposerService castingCardImageComposerService;
+
     private CastingCardServiceImpl castingCardService;
 
     @BeforeEach
@@ -67,7 +70,8 @@ class CastingCardServiceImplTest {
                 userRepository,
                 pushNotificationService,
                 s3Service,
-                castingImageAsyncService
+                castingImageAsyncService,
+                castingCardImageComposerService
         );
 
         lenient().when(s3Service.createPublicGetUrl(any(String.class)))
