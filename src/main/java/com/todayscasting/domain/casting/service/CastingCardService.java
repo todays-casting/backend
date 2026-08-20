@@ -23,7 +23,7 @@ public interface CastingCardService {
     String getImageUrl(String imageKey);
 
     // 오늘의 결과 화면 "오늘의 카드 다운로드" 버튼용. 배경 이미지 위에 날짜/배역명만 합성한
-    // 다운로드 전용 이미지를 만들어 presigned URL로 반환한다.
-    String generateDownloadCardImage(Long userId, Long dailyRecordId);
+    // 다운로드 전용 PNG 이미지 바이트를 반환한다.
+    byte[] generateDownloadCardImage(Long userId, Long dailyRecordId);
 
 }

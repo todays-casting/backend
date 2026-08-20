@@ -1,6 +1,5 @@
 package com.todayscasting.domain.casting.service;
 
-import com.todayscasting.common.exception.GeneralException;
 import com.todayscasting.domain.analysis.entity.AiAnalysisLog;
 import com.todayscasting.domain.analysis.repository.AiAnalysisLogRepository;
 import com.todayscasting.domain.casting.dto.request.CastingCardRequestDTO;
@@ -25,7 +24,6 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
@@ -195,7 +193,7 @@ class CastingCardServiceImplTest {
     }
 
     @Test
-    void downloadsGeneratedImageBytes() {
+    void generatesDownloadCardImageBytesFromGeneratedImage() {
         DailyRecord dailyRecord = DailyRecord.create(
                 1L,
                 LocalDate.of(2026, 8, 10),
@@ -211,42 +209,22 @@ class CastingCardServiceImplTest {
                 .roleName("담담한 관찰자")
                 .build();
         castingCard.updateGeneratedImageKey("casting-images/generated/9.png");
-        byte[] imageBytes = new byte[]{1, 2, 3};
+        byte[] backgroundBytes = new byte[]{1, 2, 3};
+        byte[] composedBytes = new byte[]{4, 5, 6};
 
         when(dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(9L, 1L))
                 .thenReturn(Optional.of(dailyRecord));
         when(castingCardRepository.findByDailyRecordId(9L)).thenReturn(Optional.of(castingCard));
-        when(s3Service.getObjectBytes("casting-images/generated/9.png")).thenReturn(imageBytes);
+        when(s3Service.downloadBytes("casting-images/generated/9.png")).thenReturn(backgroundBytes);
+        when(castingCardImageComposerService.compose(backgroundBytes, LocalDate.of(2026, 8, 10), "담담한 관찰자"))
+                .thenReturn(composedBytes);
 
-        byte[] result = castingCardService.downloadGeneratedImage(1L, 9L);
+        byte[] result = castingCardService.generateDownloadCardImage(1L, 9L);
 
-        assertThat(result).containsExactly(1, 2, 3);
-        verify(s3Service).getObjectBytes("casting-images/generated/9.png");
-    }
-
-    @Test
-    void rejectsDownloadWhenGeneratedImageDoesNotExist() {
-        DailyRecord dailyRecord = DailyRecord.create(
-                1L,
-                LocalDate.of(2026, 8, 10),
-                "content",
-                List.of("GOOD"),
-                List.of(),
-                List.of(),
-                DailyRecord.Status.COMPLETED
-        );
-        CastingCard castingCard = CastingCard.builder()
-                .dailyRecordId(9L)
-                .genre("일상·코미디")
-                .roleName("담담한 관찰자")
-                .build();
-
-        when(dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(9L, 1L))
-                .thenReturn(Optional.of(dailyRecord));
-        when(castingCardRepository.findByDailyRecordId(9L)).thenReturn(Optional.of(castingCard));
-
-        assertThatThrownBy(() -> castingCardService.downloadGeneratedImage(1L, 9L))
-                .isInstanceOf(GeneralException.class);
+        assertThat(result).containsExactly(4, 5, 6);
+        verify(s3Service).downloadBytes("casting-images/generated/9.png");
+        verify(castingCardImageComposerService)
+                .compose(backgroundBytes, LocalDate.of(2026, 8, 10), "담담한 관찰자");
     }
 
     private void givenCastingCardCanBeCreated(Long userId, Long dailyRecordId) {
