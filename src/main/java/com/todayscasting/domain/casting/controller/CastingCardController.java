@@ -13,6 +13,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -117,20 +121,31 @@ public class CastingCardController {
     }
 
     @Operation(
-            summary = "오늘의 카드 다운로드용 이미지 생성",
+            summary = "오늘의 카드 이미지 다운로드",
             description = "recordId(dailyRecordId)에 해당하는 캐스팅 카드의 배경 이미지 위에 날짜, " +
-                    "'TODAY'S CASTING' 라벨, 배역명만 합성한 다운로드 전용 이미지를 만들어 URL로 반환합니다. " +
+                    "'TODAY'S CASTING' 라벨, 배역명만 합성한 다운로드 전용 PNG 이미지를 직접 내려줍니다. " +
                     "하트 아이콘과 장르/한줄기록/기억에 남은 장면 등 하단 정보 패널은 포함하지 않습니다. " +
-                    "반환되는 URL은 즉시 다운로드용으로 짧게(1시간) 유효합니다."
+                    "브라우저가 cross-origin presigned URL의 download 속성을 무시하는 문제를 피하기 위한 API입니다."
     )
     @GetMapping("/{recordId}/download-card")
-    public ApiResponse<ImageUrlResponseDTO> downloadCard(
+    public ResponseEntity<byte[]> downloadCard(
             @PathVariable Long recordId,
             @AuthenticationPrincipal String email
     ) {
         Long userId = authenticatedUserResolver.resolveUserId(email);
-        String imageUrl = castingCardService.generateDownloadCardImage(userId, recordId);
-        return ApiResponse.onSuccess(ImageUrlResponseDTO.builder().imageUrl(imageUrl).build());
+        byte[] imageBytes = castingCardService.generateDownloadCardImage(userId, recordId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment()
+                                .filename("todays-casting-card.png")
+                                .build()
+                                .toString()
+                )
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(imageBytes);
     }
 
 }
