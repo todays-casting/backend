@@ -30,6 +30,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -45,6 +49,10 @@ public class CastingCardServiceImpl implements CastingCardService {
     private static final Duration GENERATED_IMAGE_URL_DURATION = Duration.ofHours(24);
     private static final String GENERATED_IMAGE_KEY_PREFIX = "casting-images/generated/";
 
+    // 다운로드 카드 이미지는 즉시 다운로드용 일회성이라, 조회용(24시간)보다 짧게 잡는다.
+    private static final Duration DOWNLOAD_CARD_URL_DURATION = Duration.ofHours(1);
+    private static final String DOWNLOAD_CARD_DIRECTORY = "casting-images/downloads";
+
     private final CastingCardRepository castingCardRepository;
     private final AiAnalysisLogRepository aiAnalysisLogRepository;
     private final DailyRecordRepository dailyRecordRepository;
@@ -52,6 +60,7 @@ public class CastingCardServiceImpl implements CastingCardService {
     private final PushNotificationService pushNotificationService;
     private final S3Service s3Service;
     private final CastingImageAsyncService castingImageAsyncService;
+    private final CastingCardImageComposerService castingCardImageComposerService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -268,6 +277,43 @@ public class CastingCardServiceImpl implements CastingCardService {
             throw new GeneralException(ErrorStatus.INVALID_REQUEST);
         }
         return s3Service.createPresignedGetUrl(imageKey, GENERATED_IMAGE_URL_DURATION);
+    }
+
+    // 오늘의 결과 화면 "오늘의 카드 다운로드" 버튼용. 배경 이미지 원본 바이트를 구해서(실시간 생성
+    // 이미지면 S3에서 직접, 매칭 방식 이미지면 공개 URL에서 HTTP로) 날짜/배역명을 합성한 뒤,
+    // 결과를 S3에 올리고 presigned URL을 반환한다. 하트 아이콘과 하단 정보 패널은 포함하지 않는다.
+    // (팀 논의 결과, 텍스트 박스가 없는 쪽이 더 "저장하고 싶은" 느낌을 준다는 의견, 2026-08-19)
+    @Override
+    @Transactional(readOnly = true)
+    public String generateDownloadCardImage(Long userId, Long dailyRecordId) {
+        validateOwnership(userId, dailyRecordId);
+        DailyRecord dailyRecord = dailyRecordRepository.findByIdAndUserIdAndDeletedAtIsNull(dailyRecordId, userId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.RESOURCE_NOT_FOUND));
+        CastingCard castingCard = findByDailyRecordIdOrThrow(dailyRecordId);
+        User.Gender gender = resolveGender(userId);
+
+        byte[] backgroundBytes = fetchBackgroundBytes(castingCard, gender);
+        byte[] composedBytes = castingCardImageComposerService.compose(
+                backgroundBytes, dailyRecord.getRecordDate(), castingCard.getRoleName());
+
+        String key = s3Service.uploadBytes(composedBytes, DOWNLOAD_CARD_DIRECTORY, "image/png");
+        return s3Service.createPresignedGetUrl(key, DOWNLOAD_CARD_URL_DURATION);
+    }
+
+    // 실시간 생성 이미지(generatedImageKey)가 있으면 우리 S3 버킷에서 바로 바이트를 읽고,
+    // 없으면(기존 매칭 방식) CastingImageResolver가 알려주는 공개 URL에서 HTTP로 내려받는다.
+    private byte[] fetchBackgroundBytes(CastingCard castingCard, User.Gender gender) {
+        if (castingCard.getGeneratedImageKey() != null) {
+            return s3Service.downloadBytes(castingCard.getGeneratedImageKey());
+        }
+
+        String imageKey = CastingImageResolver.resolveImageKey(castingCard.getGenre(), gender);
+        String imageUrl = s3Service.createPublicGetUrl(imageKey);
+        try (InputStream inputStream = new URI(imageUrl).toURL().openStream()) {
+            return inputStream.readAllBytes();
+        } catch (IOException | URISyntaxException e) {
+            throw new IllegalStateException("배경 이미지를 내려받을 수 없습니다: " + imageUrl, e);
+        }
     }
 
     private CastingFavoriteResponseDTO toFavoriteResponseDTO(CastingCard castingCard, User.Gender gender) {
