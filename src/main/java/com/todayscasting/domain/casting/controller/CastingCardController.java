@@ -116,4 +116,21 @@ public class CastingCardController {
         return ApiResponse.onSuccess(ImageUrlResponseDTO.builder().imageUrl(imageUrl).build());
     }
 
+    @Operation(
+            summary = "오늘의 카드 다운로드용 이미지 생성",
+            description = "recordId(dailyRecordId)에 해당하는 캐스팅 카드의 배경 이미지 위에 날짜, " +
+                    "'TODAY'S CASTING' 라벨, 배역명만 합성한 다운로드 전용 이미지를 만들어 URL로 반환합니다. " +
+                    "하트 아이콘과 장르/한줄기록/기억에 남은 장면 등 하단 정보 패널은 포함하지 않습니다. " +
+                    "반환되는 URL은 즉시 다운로드용으로 짧게(1시간) 유효합니다."
+    )
+    @GetMapping("/{recordId}/download-card")
+    public ApiResponse<ImageUrlResponseDTO> downloadCard(
+            @PathVariable Long recordId,
+            @AuthenticationPrincipal String email
+    ) {
+        Long userId = authenticatedUserResolver.resolveUserId(email);
+        String imageUrl = castingCardService.generateDownloadCardImage(userId, recordId);
+        return ApiResponse.onSuccess(ImageUrlResponseDTO.builder().imageUrl(imageUrl).build());
+    }
+
 }
