@@ -12,6 +12,7 @@ import com.todayscasting.global.security.jwt.JwtProvider;
 import com.todayscasting.global.security.jwt.TokenBlacklistService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -21,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -73,7 +75,7 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.signUpStep1(request))
                 .isInstanceOf(GeneralException.class)
                 .extracting("errorCode")
-                .isEqualTo(AuthErrorStatus.WITHDRAWN_EMAIL_CANNOT_SIGNUP);
+                .isEqualTo(AuthErrorStatus.EMAIL_ALREADY_EXISTS);
 
         verify(userRepository, never()).save(any(User.class));
     }
@@ -88,6 +90,8 @@ class AuthServiceTest {
 
         authService.withdraw("old@example.com", "access-token");
 
-        verify(withdrawnEmailRepository).save(any(WithdrawnEmail.class));
+        ArgumentCaptor<WithdrawnEmail> captor = ArgumentCaptor.forClass(WithdrawnEmail.class);
+        verify(withdrawnEmailRepository).save(captor.capture());
+        assertThat(captor.getValue().getEmailHash()).isEqualTo("email-hash");
     }
 }

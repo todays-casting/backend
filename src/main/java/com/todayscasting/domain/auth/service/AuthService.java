@@ -41,7 +41,7 @@ public class AuthService {
         }
         String emailHash = emailHashService.hash(request.email());
         if (withdrawnEmailRepository.existsByEmailHash(emailHash)) {
-            throw new GeneralException(AuthErrorStatus.WITHDRAWN_EMAIL_CANNOT_SIGNUP);
+            throw new GeneralException(AuthErrorStatus.EMAIL_ALREADY_EXISTS);
         }
         if (userRepository.existsByEmailAndDeletedAtIsNull(request.email())) {
             throw new GeneralException(AuthErrorStatus.EMAIL_ALREADY_EXISTS);

@@ -12,7 +12,6 @@ import org.springframework.http.HttpStatus;
 public enum AuthErrorStatus implements BaseErrorCode {
 
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "AUTH_409_1", "이미 사용 중인 이메일입니다."),
-    WITHDRAWN_EMAIL_CANNOT_SIGNUP(HttpStatus.CONFLICT, "AUTH_409_2", "탈퇴한 이메일로는 다시 가입할 수 없습니다."),
     INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "AUTH_401_1", "비밀번호가 올바르지 않습니다."),
     PASSWORD_CONFIRM_MISMATCH(HttpStatus.BAD_REQUEST, "AUTH_400_1", "비밀번호가 일치하지 않습니다."),
     INVALID_OTP(HttpStatus.BAD_REQUEST, "AUTH_400_2", "인증코드가 올바르지 않습니다."),

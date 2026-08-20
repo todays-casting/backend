@@ -61,6 +61,7 @@ jobs:
       TZ: Asia/Seoul
       JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
       JWT_SECRET: ci-test-secret-key-must-be-at-least-32-characters
+      WITHDRAWN_EMAIL_HMAC_SECRET: ci-test-withdrawn-email-hmac-secret-32chars
       JWT_ACCESS_TOKEN_VALIDITY: 3600000
       KAKAO_CLIENT_ID: ci-test-kakao-client-id
       KAKAO_REDIRECT_URI: http://localhost:8080/auth/kakao

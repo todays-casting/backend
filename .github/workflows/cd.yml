@@ -103,6 +103,7 @@ jobs:
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
 
             JWT_SECRET=${{ secrets.JWT_SECRET }}
+            WITHDRAWN_EMAIL_HMAC_SECRET=${{ secrets.WITHDRAWN_EMAIL_HMAC_SECRET }}
             JWT_ACCESS_TOKEN_VALIDITY=${{ secrets.JWT_ACCESS_TOKEN_VALIDITY }}
             KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
             KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}
