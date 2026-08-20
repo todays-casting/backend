@@ -270,6 +270,18 @@ public class CastingCardServiceImpl implements CastingCardService {
         return s3Service.createPresignedGetUrl(imageKey, GENERATED_IMAGE_URL_DURATION);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] downloadGeneratedImage(Long userId, Long dailyRecordId) {
+        validateOwnership(userId, dailyRecordId);
+        CastingCard castingCard = findByDailyRecordIdOrThrow(dailyRecordId);
+        String generatedImageKey = castingCard.getGeneratedImageKey();
+        if (generatedImageKey == null || !generatedImageKey.startsWith(GENERATED_IMAGE_KEY_PREFIX)) {
+            throw new GeneralException(ErrorStatus.INVALID_REQUEST);
+        }
+        return s3Service.getObjectBytes(generatedImageKey);
+    }
+
     private CastingFavoriteResponseDTO toFavoriteResponseDTO(CastingCard castingCard, User.Gender gender) {
         return CastingFavoriteResponseDTO.builder()
                 .dailyRecordId(castingCard.getDailyRecordId())

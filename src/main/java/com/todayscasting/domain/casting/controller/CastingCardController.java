@@ -13,6 +13,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -114,6 +118,32 @@ public class CastingCardController {
     ) {
         String imageUrl = castingCardService.getImageUrl(key);
         return ApiResponse.onSuccess(ImageUrlResponseDTO.builder().imageUrl(imageUrl).build());
+    }
+
+    @Operation(
+            summary = "캐스팅 카드 이미지 다운로드",
+            description = "dailyRecordId(recordId)에 해당하는 실시간 생성 캐스팅 카드 이미지를 PNG 바이너리로 직접 내려줍니다. " +
+                    "브라우저가 cross-origin presigned URL의 download 속성을 무시하는 문제를 피하기 위한 다운로드 전용 API입니다."
+    )
+    @GetMapping("/{recordId}/download-card")
+    public ResponseEntity<byte[]> downloadCastingCard(
+            @PathVariable Long recordId,
+            @AuthenticationPrincipal String email
+    ) {
+        Long userId = authenticatedUserResolver.resolveUserId(email);
+        byte[] imageBytes = castingCardService.downloadGeneratedImage(userId, recordId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment()
+                                .filename("todays-casting-card.png")
+                                .build()
+                                .toString()
+                )
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(imageBytes);
     }
 
 }
