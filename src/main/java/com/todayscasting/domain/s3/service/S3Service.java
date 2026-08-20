@@ -9,10 +9,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -74,6 +76,23 @@ public class S3Service {
 
         s3Client.putObject(request, RequestBody.fromBytes(data));
         return key;
+    }
+
+    /**
+     * S3 객체 키를 기준으로 파일 바이트를 직접 읽어옵니다.
+     * presigned URL을 거치지 않고 서버 내부에서 바로 처리할 때(예: 다운로드 카드 이미지 합성) 사용합니다.
+     */
+    public byte[] downloadBytes(String key) {
+        GetObjectRequest request = GetObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .build();
+
+        try (ResponseInputStream<GetObjectResponse> responseStream = s3Client.getObject(request)) {
+            return responseStream.readAllBytes();
+        } catch (IOException e) {
+            throw new IllegalStateException("S3에서 파일을 읽을 수 없습니다: " + key, e);
+        }
     }
 
     /**
